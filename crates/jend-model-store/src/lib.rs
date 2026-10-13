@@ -28,6 +28,7 @@ mod source_worker;
 mod safety;
 mod weightvm;
 mod runtime_feasibility;
+mod signed_gguf;
 mod weight_store;
 mod virtual_map;
 
@@ -109,3 +110,5 @@ pub use runtime_feasibility::{
     VariantResourceEstimate, DeviceResourceEstimate, LocalFeasibility,
     estimate_local_feasibility,
 };
+
+pub use signed_gguf::{VerifiedGgufInspection, inspect_independently_signed_gguf};
