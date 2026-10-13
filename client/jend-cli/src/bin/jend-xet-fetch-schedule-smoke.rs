@@ -6,6 +6,9 @@ mod xet_metadata;
 #[allow(dead_code)]
 #[path = "../xet_fetch_schedule.rs"]
 mod xet_fetch_schedule;
+#[allow(dead_code)]
+#[path = "../xet_multipart.rs"]
+mod xet_multipart;
 
 use xet_fetch_schedule::{build_fetch_schedule, FetchScheduleError, FetchScheduleLimits};
 use xet_metadata::parse_v2_reconstruction;
@@ -82,6 +85,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !schedule.jobs[2].request.range_header.contains(',') {
         return Err("fixture did not exercise atomic multi-range planning".into());
     }
+    // Offline parser-only check; does not authorize live multipart transport.
+    let signed = schedule.jobs[2].request.ranges.iter()
+        .map(|(_, bytes)| *bytes).collect::<Vec<_>>();
+    let sample = b"--JEND\r\nContent-Range: bytes 0-7/128\r\n\r\nABCDEFGH\r\n--JEND\r\nContent-Range: bytes 20-27/128\r\n\r\nIJKLMNOP\r\n--JEND--\r\n";
+    let validated = xet_multipart::parse_multipart_ranges(
+        "multipart/byteranges; boundary=JEND",
+        sample,
+        &signed,
+        xet_multipart::MultipartLimits::default(),
+    )?;
+    if validated.len() != 2
+        || validated[0].bytes != b"ABCDEFGH"
+        || validated[1].bytes != b"IJKLMNOP"
+    {
+        return Err("signed physical range binding mismatch".into());
+    }
+    println!("Jend Xet strict offline multipart parser: PASS");
     println!("Jend Xet multipart network execution remains fail-closed: PASS");
     Ok(())
 }
