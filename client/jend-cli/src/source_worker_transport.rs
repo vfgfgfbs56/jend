@@ -178,7 +178,7 @@ pub async fn execute_pinned_get(
 
     let url = format!("https://{}{}", request.host, request.path_and_query);
     let mut builder = client.get(url);
-    if matches!(request.expected, ExpectedResponse::Multipart206 { .. }) {
+    if matches!(request.expected, ExpectedResponse::Multipart206 { .. } | ExpectedResponse::SingleRange206 { .. }) {
         // Do not negotiate transparent response decompression: Range offsets
         // refer to on-wire xorb bytes, not transformed representations.
         builder = builder.header(reqwest::header::ACCEPT_ENCODING, "identity");
@@ -197,6 +197,9 @@ pub async fn execute_pinned_get(
     let status = response.status();
     validate_status(request.expected, status)?;
     validate_response_headers(response.headers(), request.expected)?;
+    if matches!(request.expected, ExpectedResponse::SingleRange206 { .. }) {
+        validate_single_range_content_range(response.headers(), request.range_header.as_deref())?;
+    }
 
     let announced = response.content_length();
     let expected_len = match request.expected {
@@ -274,6 +277,16 @@ fn validate_request_shape(request: &PinnedGetRequest) -> Result<(), TransportErr
             // Single-range execution must never accept comma-separated ranges.
             return Err(TransportError::InvalidRequest);
         }
+        let Some((start, end)) = range.strip_prefix("bytes=").and_then(|s| s.split_once('-')) else {
+            return Err(TransportError::InvalidRequest);
+        };
+        let (Ok(start), Ok(end)) = (start.parse::<u64>(), end.parse::<u64>()) else {
+            return Err(TransportError::InvalidRequest);
+        };
+        let declared = end.checked_sub(start).and_then(|v| v.checked_add(1));
+        if !matches!(request.expected, ExpectedResponse::SingleRange206 { expected_len } if Some(expected_len) == declared) {
+            return Err(TransportError::InvalidRequest);
+        }
     }
     if let ExpectedResponse::Multipart206 { max_body_bytes } = request.expected {
         let Some(range) = request.range_header.as_deref() else {
@@ -314,6 +327,17 @@ fn validate_response_headers(
     headers: &reqwest::header::HeaderMap,
     expected: ExpectedResponse,
 ) -> Result<(), TransportError> {
+    if matches!(expected, ExpectedResponse::SingleRange206 { .. }) {
+        if headers.get_all(reqwest::header::CONTENT_RANGE).iter().count() != 1
+            || headers.get_all(reqwest::header::CONTENT_LENGTH).iter().count() > 1
+            || headers.get_all(reqwest::header::CONTENT_TYPE).iter().count() > 1
+            || headers.contains_key(reqwest::header::CONTENT_ENCODING)
+            || headers.get(reqwest::header::CONTENT_TYPE).and_then(|h| h.to_str().ok())
+                .is_some_and(|h| h.to_ascii_lowercase().starts_with("multipart/"))
+        {
+            return Err(TransportError::InvalidHeader);
+        }
+    }
     if matches!(expected, ExpectedResponse::Multipart206 { .. }) {
         if headers.get_all(reqwest::header::CONTENT_TYPE).iter().count() != 1
             || headers.get_all(reqwest::header::CONTENT_LENGTH).iter().count() > 1
@@ -324,6 +348,40 @@ fn validate_response_headers(
             // reinterpreted as a single Content-Range at the top level.
             return Err(TransportError::InvalidHeader);
         }
+    }
+    Ok(())
+}
+
+/// Check that a *single* HTTP 206 answer refers to the exact byte interval
+/// authorized by metadata, not just a body with the expected byte count.
+fn validate_single_range_content_range(
+    headers: &reqwest::header::HeaderMap,
+    request_range: Option<&str>,
+) -> Result<(), TransportError> {
+    let requested = request_range.and_then(|v| v.strip_prefix("bytes="))
+        .and_then(|v| v.split_once('-'))
+        .ok_or(TransportError::InvalidHeader)?;
+    let (request_start, request_end) = (
+        requested.0.parse::<u64>().map_err(|_| TransportError::InvalidHeader)?,
+        requested.1.parse::<u64>().map_err(|_| TransportError::InvalidHeader)?,
+    );
+    let value = headers.get(reqwest::header::CONTENT_RANGE)
+        .ok_or(TransportError::InvalidHeader)?
+        .to_str().map_err(|_| TransportError::InvalidHeader)?;
+    if value.len() > 128 || value.bytes().any(|b| b.is_ascii_control()) {
+        return Err(TransportError::InvalidHeader);
+    }
+    let (actual, total) = value.strip_prefix("bytes ")
+        .and_then(|v| v.split_once('/'))
+        .ok_or(TransportError::InvalidHeader)?;
+    let (start, end) = actual.split_once('-').ok_or(TransportError::InvalidHeader)?;
+    let (start, end, total) = (
+        start.parse::<u64>().map_err(|_| TransportError::InvalidHeader)?,
+        end.parse::<u64>().map_err(|_| TransportError::InvalidHeader)?,
+        total.parse::<u64>().map_err(|_| TransportError::InvalidHeader)?,
+    );
+    if start != request_start || end != request_end || total <= end {
+        return Err(TransportError::InvalidHeader);
     }
     Ok(())
 }
@@ -469,6 +527,24 @@ mod tests {
         assert!(!is_public_ip("10.0.0.1".parse().unwrap()));
         assert!(!is_public_ip("::1".parse().unwrap()));
         assert!(is_public_ip("8.8.8.8".parse().unwrap()));
+    }
+
+    #[test]
+    fn exact_single_range_content_range_rejects_wrong_offset_and_encoding() {
+        use reqwest::header::{HeaderMap, HeaderValue, CONTENT_ENCODING, CONTENT_RANGE, CONTENT_TYPE};
+        let mut headers = HeaderMap::new();
+        headers.insert(CONTENT_RANGE, HeaderValue::from_static("bytes 20-29/100"));
+        assert!(validate_single_range_content_range(&headers, Some("bytes=20-29")).is_ok());
+        assert!(validate_single_range_content_range(&headers, Some("bytes=21-30")).is_err());
+        assert!(validate_single_range_content_range(&headers, Some("bytes=20-29,40-49")).is_err());
+        headers.insert(CONTENT_RANGE, HeaderValue::from_static("bytes 20-29/*"));
+        assert!(validate_single_range_content_range(&headers, Some("bytes=20-29")).is_err());
+        headers.insert(CONTENT_RANGE, HeaderValue::from_static("bytes 20-29/100"));
+        headers.insert(CONTENT_ENCODING, HeaderValue::from_static("gzip"));
+        assert!(validate_response_headers(&headers, ExpectedResponse::SingleRange206 { expected_len: 10 }).is_err());
+        headers.remove(CONTENT_ENCODING);
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static("multipart/byteranges; boundary=bad"));
+        assert!(validate_response_headers(&headers, ExpectedResponse::SingleRange206 { expected_len: 10 }).is_err());
     }
 
     #[test]
