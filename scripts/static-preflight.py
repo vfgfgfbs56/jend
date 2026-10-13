@@ -1829,4 +1829,42 @@ require(
     "Jend project continuity update gate and README pointer must remain active",
 )
 
+# M8.5.15.5: same-open-description verification, not immutable
+# contents nor a native worker execution capability.
+opened_signed_gguf = read("crates/jend-model-store/src/signed_gguf.rs")
+opened_snapshot = read("crates/jend-model-store/src/gguf_snapshot.rs")
+opened_smoke = read("crates/jend-model-store/src/bin/jend-verified-gguf-snapshot-smoke.rs")
+opened_docs = read("docs/M8.5.15.5-VERIFIED-OPEN-GGUF-LEASE.md")
+root_handoff = read("JEND-PROJECT-CONTEXT.md")
+for required in [
+    "inspect_independently_signed_gguf_open_file",
+    "trusted_key.verify(signed)?",
+    "file.seek(SeekFrom::Start(0))?",
+    "WholeModelVerifier::new(m)",
+    "ChunkVerifier::new(chunk)",
+]:
+    require(required in opened_signed_gguf, f"M8.5.15.5 same handle verification missing: {required}")
+for required in [
+    "VerifiedGgufOpenLease",
+    "pub fn open_verified_handle(",
+    "pub fn reverify(",
+    "initial.dev() != opened.dev()",
+    "initial.ino() != opened.ino()",
+    "inspect_independently_signed_gguf_open_file",
+]:
+    require(required in opened_snapshot, f"M8.5.15.5 pinned descriptor check missing: {required}")
+for required in [
+    "Jend GGUF same opened handle signed hash verification: PASS",
+    "Jend GGUF held descriptor rejects wrong signing key: PASS",
+    "Jend GGUF file descriptor survives pathname substitution: PASS",
+    "Jend GGUF held descriptor rehash detects same-inode tampering: PASS",
+]:
+    require(required in opened_smoke, f"M8.5.15.5 negative test missing: {required}")
+require(
+    "NOT immutable file contents" in opened_docs
+    and "Backend & Security Ready (frontend start gate)" in root_handoff
+    and "Product Release" in root_handoff,
+    "Jend frontend must start after explicit backend/security readiness, not design freeze",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")
