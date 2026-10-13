@@ -1,5 +1,7 @@
 # Jend
 
+> **Для новых чатов и разработчиков:** сначала открыть [JEND-PROJECT-CONTEXT.md](JEND-PROJECT-CONTEXT.md) — текущее состояние, подтверждённые проверки, порядок PR, следующие задачи и критерии завершения архитектуры. Этот файл обновляется вместе с существенными PR; CI проверяет наличие обновления.
+
 Security-first, local-first AI messaging architecture.
 
 Models run on the user's device. Production servers are a control plane / encrypted relay, not a place where user conversations or model inference live. The cryptographic design aims to ensure that a server compromise or a single developer identity is insufficient to obtain conversation plaintext.
