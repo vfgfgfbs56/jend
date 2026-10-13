@@ -1,5 +1,6 @@
 945ee8b8444f48946e3d885869b988032ccd3463e9e6a1f483130ff1abb53f0b  .github/workflows/ci.yml
 8704b3eca44469396b9d19ae0718397fb08508194dd1af4aba9c707eb9230f6c  .github/workflows/headless-ci.yml
+efa55ca0f160c3cb5142400d32613e985f25b0bfbdc4434465e9f5f76ac205f9  .github/workflows/native-ipc-portability.yml
 e08ab01f51f5c118ac010bdcb8376981ebf86deaa497f2bf1c470a54595ff5eb  .gitignore
 ab1efd078780c850c4cfd1582f00ca7be58b879d07ba0d0edb5915c1a4b1c323  Cargo.toml
 bfb717aa53bf14270dc3b628cb32681cbb43c33670f3dbf3fd9517fe75ce5916  README.md
@@ -21,7 +22,7 @@ eebd6972f36b823de8e3fcedcbdfb140afe56e1b7ea9c88004784b13bf63c494  client/jend-cl
 89805742ed1bc4b5248b171b9fdf638650167e2e00fe946b59dc7b71153e8046  client/jend-cli/src/bin/jend-xet-single-range-plan-smoke.rs
 6d9e87c2c7c786550bab1638da0bdecb05c9e69de78ffc908a0cb0fb5d64553f  client/jend-cli/src/bin/jend-xet-xorb-decode-smoke.rs
 a466402853c55f2df1c09238c4656e24e29b5348dd23ade1efe7b4d76ee87d4f  client/jend-cli/src/main.rs
-c1010e639699148966ef6dc801786a3b91c4c288010656df0b4e85ce79402fec  client/jend-cli/src/native_gguf_ipc.rs
+fd7181a30e6ab1b6db567db3fe655d45969b9b552232e75ca33d7695f22cd5e8  client/jend-cli/src/native_gguf_ipc.rs
 2a82fe81c1ea421cc28f6ef139976ecacd5e8e9afd54bc35b93155ca6db2f81c  client/jend-cli/src/source_worker_transport.rs
 01e698a4853e3b3da28b1a4f426ed0b3ad68910eaee3bea83ddfe238aeb6a92d  client/jend-cli/src/verified_xet_page_bridge.rs
 95f914b36479de50ef9ed9b8fdd048ab036a55fa4aeed8247d3e6c88637f68f7  client/jend-cli/src/xet_fetch_schedule.rs
@@ -225,6 +226,7 @@ fab6b903046c99f52fb44f57ff6d1e57de87ac614efb5c5775483de438fd9df8  docs/M8.5.12-S
 c06c6f148e0315f5c172af9549aa1c2429184cbaf9ebcb1c8ba009f541cb74ae  docs/M8.5.13-SIGNED-XET-WEIGHTPAGE-ADMISSION.md
 d396444fad93704da74ac47615eb7146fa0f6cc70493e508f21fa6796aebfe52  docs/M8.5.15-PINNED-GGUF-CPU-WORKER-PROOF.md
 e73fc924f3dc2bd6297fe1e708edb756b3c0621bade9272b55608a0da65a7888  docs/M8.5.15.1-RUST-NATIVE-WORKER-SUPERVISOR.md
+218b7f9df4e321821ec6d391867f3c48692fb739c4f49aa76f478b5e17f352e9  docs/M8.5.15.2-CROSS-DEVICE-NATIVE-PROTOCOL.md
 fbafe009c2702dc2fbbb2f6af2f5d7902fe644a671abb5f8a58e4510e6cdf6a1  docs/M8.5.2-XET-METADATA.md
 662881a33bc2fc9568b20cfb0abd47ddc9e1c26a780d1ecfd5fdfb7051827a2d  docs/M8.5.2.1-XET-METADATA-SMOKE-CLEANUP.md
 e580b675001d6b73ede7d3f99bbcf46ef4c367ce71cd945750162cee282b9a16  docs/M8.5.2.2-XET-SCHEMA-CORRECTION.md
@@ -246,7 +248,7 @@ cc6b64616cdd8746392031a75948908aeba4212b4511bc88727708b33ae3b901  docs/M8.5.9-ST
 ed9f2f9a9608ff938d1e6cf939ef3fedb96a05936f82aeb1b36c6ecb8dbc203b  docs/ROADMAP.md
 386858638901eef71030e0c31fdb1178b1b99cf6a1fde72e2f74f0a23fb902e9  docs/SYNC-SERVER-PROTOCOL.md
 707d8d8b7ded966d04ccf77383139c3244b054a4f0e61baa9fc845cdb7f7015b  docs/legacy/003_model_store_legacy.sql.txt
-e93a8e96b4f672fe5e88a7659eb507ec1b5599eafc36786b85213d6ce02ffb83  native/jend-gguf-worker/CMakeLists.txt
+be722131bd3fbc5d05dc9a29207ea525ac821c80728f70ab913d6064a119361e  native/jend-gguf-worker/CMakeLists.txt
 1da08649be8c7b08bc4f96232f8939187e93cfe7bbf6d15a50d22d79973ae5f7  native/jend-gguf-worker/worker.cpp
 da74f15d4ea22066934e0bfe22c80c56f370325f9cbec579de66f080046cca1c  rust-toolchain.toml
 a91a955fe388d0d086fbee34797966b72958c24e72bdd559ecc8b52a55e6121c  scripts/check-headless.sh
@@ -265,6 +267,7 @@ a600153515872394b143a57b9a6052f94d6f2ae88555433a718ec6251ff544e6  scripts/dev-hf
 c1c3306db8ffbfd9b132a444386352a9360d9599864f8c810c7b4558823edbd7  scripts/dev-hf-xet-single-range-live-smoke.sh
 c7a46f70ebac4adada50b381f063855f140e907d366709d345ab33a5dba56e19  scripts/dev-model-access-smoke.sh
 7e5a910120319ea957cf1f9953dfa2fbcf7307e436c1353cb6ed82d1e5cc07d9  scripts/dev-model-ingest-smoke.sh
+4924530173512c217bd9d8a5c707d709f5d7319417dce194b82fac6b2cd3271b  scripts/dev-native-gguf-cross-platform-smoke.py
 e2eebd08d398803c4089bf481f5362c95aa8877d0563118a13d83d4a4f76fa99  scripts/dev-native-gguf-rust-supervisor-smoke.sh
 26182fbe65d365ffafb5a8f6e1326c4de2823075179098997f242b63aa018b50  scripts/dev-native-gguf-worker-protocol-smoke.sh
 494761e05dedb32fc7099ae9b784432b23ff16e5c2feeecc0e4c75ce971bf99d  scripts/dev-performance-smoke.sh
@@ -292,7 +295,7 @@ dc5215348263caaa250f8cdb3683e8b66e0c35503513044f21d8a7ff21cb150c  scripts/dev-ze
 c2b4aad8d07dcb967e17272e91b22fac85ceba0c3a8d7bc4a3c1333a5dd85392  scripts/first-test-ladder.sh
 06ea4b1d532ff5bd5a496b5848ac3115a41cd6222f61a43c8ed093d99411de8c  scripts/prepare-m8.5.5-lock.sh
 e5d5fdb3785861588b1cc5afbc9b2d1d93c0842040459fcfe10a5b73b2377516  scripts/prepare-m8.5.6-lock.sh
-9ec90099f3c767114e6aa920b4699a18e1742ca277a3143d1a33af020c41c6db  scripts/static-preflight.py
+61ab9cb3674a631c8d173f05989671c5921e0badc9c66ea4daa18fec55fe7305  scripts/static-preflight.py
 7ce62098240abb951ec78be8ce202e3e2165dc929e917d09784dde54bcc0770c  scripts/verify-manifest.py
 e9ef375964e97cb2fa49cb886aad18e2a570ccc81b7e61fb055502329916be03  security/processes.toml
 e36b954a737bdc163a6fedd770346bdfd4f63e05b5f75b329e866af437568f2a  server/jend-gateway/Cargo.toml
