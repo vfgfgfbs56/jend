@@ -1,7 +1,7 @@
 # JEND — PROJECT CONTEXT & ROADMAP (памятка для нового чата)
 
 > **Обновлено:** 2026-10-13. **Текущий этап:** M8.5.15.6a native worker integrity preflight (в разработке); последний подтверждённый Mac-тест — M8.5.15.5, 10 PASS.  
-> **Основная ветка разработки:** `feat/m8.5.15.6-native-worker-integrity-preflight`, новый stacked PR поверх [#14](https://github.com/vfgfgfbs56/jend/pull/14).  
+> **Основная ветка разработки:** `feat/m8.5.15.6-native-worker-integrity-preflight`, [#15](https://github.com/vfgfgfbs56/jend/pull/15) поверх [#14](https://github.com/vfgfgfbs56/jend/pull/14).  
 > **Статус:** прототипы проверки/хранения моделей и взаимодействия Rust/C++; **реальный безопасный инференс сторонней модели в Jend пока НЕ реализован**.  
 > **Важно:** этот файл — редактируемый снимок на момент коммита, не автоматически обновляемые сведения о GitHub. Перед новым действием перечитать его и **проверить актуальное состояние PR, веток и CI**.
 
@@ -114,7 +114,7 @@ Jend GGUF snapshot grants no native execution capability: PASS
 | 11 | [#12](https://github.com/vfgfgfbs56/jend/pull/12) | M8.5.15.3 signed GGUF intake |
 | 12 | [#13](https://github.com/vfgfgfbs56/jend/pull/13) | M8.5.15.4 private verified snapshot — предыдущий этап |
 | 13 | [#14](https://github.com/vfgfgfbs56/jend/pull/14) | M8.5.15.5 same-open-handle signed GGUF rehash, Mac 10 PASS; ещё не immutable OS backing |
-| 14 | PR #15 (создаётся) | M8.5.15.6a только проверка SHA-256 исполняемого native worker; NO production attestation / sandbox |
+| 14 | [#15](https://github.com/vfgfgfbs56/jend/pull/15) | M8.5.15.6a только проверка SHA-256 исполняемого native worker; NO production attestation / sandbox |
 
 ## 5. Очередь задач — последовательность и условия допуска
 
