@@ -1867,4 +1867,34 @@ require(
     "Jend frontend must start after explicit backend/security readiness, not design freeze",
 )
 
+# M8.5.15.6a native worker binary SHA256 preflight ONLY. A checksum
+# over a pathname is NOT executable attestation or OS-level sandbox.
+native_executable_gate = read("client/jend-cli/src/native_worker_integrity.rs")
+native_executable_smoke = read("client/jend-cli/src/bin/jend-native-worker-integrity-smoke.rs")
+native_executable_docs = read("docs/M8.5.15.6-NATIVE-WORKER-INTEGRITY-PREFLIGHT.md")
+native_executable_script = read("scripts/dev-native-worker-integrity-smoke.sh")
+for expected in [
+    "inspect_pinned_native_worker",
+    "MAX_WORKER_BYTES: u64 = 128 * 1024 * 1024",
+    "const CHUNK_BYTES: usize = 64 * 1024",
+    "fs::symlink_metadata(executable)",
+    "Sha256::new()",
+    "NativeBinaryError::UntrustedBinary",
+    "before.permissions().mode() & 0o022",
+]:
+    require(expected in native_executable_gate, f"M8.5.15.6a binary integrity gate missing: {expected}")
+for expected in [
+    "Jend native worker exact SHA256 binary inspection: PASS",
+    "Jend native worker wrong independent digest denied: PASS",
+    "Jend native worker changed binary bytes rejected: PASS",
+    "Jend native preflight provides no OS sandbox or production execution: PASS",
+]:
+    require(expected in native_executable_smoke, f"M8.5.15.6a negative test missing: {expected}")
+require(
+    "NOT a worker code-signing" in native_executable_docs
+    and "JEND_BUILD_EXPERIMENTAL_LLAMA=OFF" in native_executable_script
+    and "M8.5.15.6a" in read("JEND-PROJECT-CONTEXT.md"),
+    "M8.5.15.6a release-signed executable attestation not yet production-ready",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")

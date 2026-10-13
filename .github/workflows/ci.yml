@@ -49,3 +49,5 @@ jobs:
         run: bash scripts/dev-signed-gguf-intake-smoke.sh
       - name: Verify signed GGUF snapshot and pinned descriptor across path substitution
         run: bash scripts/dev-verified-gguf-snapshot-smoke.sh
+      - name: Verify independent native worker binary SHA256 preflight rejects tampering
+        run: bash scripts/dev-native-worker-integrity-smoke.sh

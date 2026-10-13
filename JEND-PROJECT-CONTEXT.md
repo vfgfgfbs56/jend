@@ -1,14 +1,14 @@
 # JEND — PROJECT CONTEXT & ROADMAP (памятка для нового чата)
 
-> **Обновлено:** 2026-10-13. **Текущий этап:** M8.5.15.5 (в разработке); последний проверенный backend-этап M8.5.15.4.  
-> **Основная ветка разработки:** `feat/m8.5.15.5-pinned-gguf-file-handle`, [#14](https://github.com/vfgfgfbs56/jend/pull/14) поверх [#13](https://github.com/vfgfgfbs56/jend/pull/13).  
+> **Обновлено:** 2026-10-13. **Текущий этап:** M8.5.15.6a native worker integrity preflight (в разработке); последний подтверждённый Mac-тест — M8.5.15.5, 10 PASS.  
+> **Основная ветка разработки:** `feat/m8.5.15.6-native-worker-integrity-preflight`, [#15](https://github.com/vfgfgfbs56/jend/pull/15) поверх [#14](https://github.com/vfgfgfbs56/jend/pull/14).  
 > **Статус:** прототипы проверки/хранения моделей и взаимодействия Rust/C++; **реальный безопасный инференс сторонней модели в Jend пока НЕ реализован**.  
 > **Важно:** этот файл — редактируемый снимок на момент коммита, не автоматически обновляемые сведения о GitHub. Перед новым действием перечитать его и **проверить актуальное состояние PR, веток и CI**.
 
 ## Как продолжать в новом чате (прочитать прежде, чем действовать)
 
 1. Открыть **именно этот файл из последней рабочей ветки**:
-   [JEND-PROJECT-CONTEXT.md — актуальная ветка](https://github.com/vfgfgfbs56/jend/blob/feat/m8.5.15.5-pinned-gguf-file-handle/JEND-PROJECT-CONTEXT.md).
+   [JEND-PROJECT-CONTEXT.md — актуальная ветка](https://github.com/vfgfgfbs56/jend/blob/feat/m8.5.15.6-native-worker-integrity-preflight/JEND-PROJECT-CONTEXT.md).
    После слияния прочитать версию на `main`:
    `https://github.com/vfgfgfbs56/jend/blob/main/JEND-PROJECT-CONTEXT.md`.
 2. Проверить [открытые PR](https://github.com/vfgfgfbs56/jend/pulls), их **базы**, последние SHA, CI и отсутствие конфликтов. Не предполагать, что все ранее открытые PR уже слиты.
@@ -18,7 +18,7 @@
 
 **Текст для вставки в новый чат:**
 
-> Продолжаем разработку Jend в https://github.com/vfgfgfbs56/jend. Сначала прочитай https://github.com/vfgfgfbs56/jend/blob/feat/m8.5.15.4-verified-gguf-snapshot/JEND-PROJECT-CONTEXT.md и проверь текущие GitHub PR/CI. Это основной контекст целей, уже выполненных тестов, ограничений безопасности, очереди работ и критериев завершения архитектуры. Продолжай от актуальной верхней ветки, обнови этот файл вместе с изменениями; не сливай PR без моего разрешения.
+> Продолжаем разработку Jend в https://github.com/vfgfgfbs56/jend. Сначала прочитай https://github.com/vfgfgfbs56/jend/blob/feat/m8.5.15.6-native-worker-integrity-preflight/JEND-PROJECT-CONTEXT.md и проверь текущие GitHub PR/CI. Это основной контекст целей, уже выполненных тестов, ограничений безопасности, очереди работ и критериев завершения архитектуры. Продолжай от актуальной верхней ветки, обнови этот файл вместе с изменениями; не сливай PR без моего разрешения.
 
 ## 1. Что мы строим и чего НЕ строим
 
@@ -66,25 +66,32 @@ OPTIONAL REMOTE: только отдельная явная сессия BYOK/п
 - M8.5.15: протокольный C++ worker — **5 PASS**; real GGUF НЕ исполнялся.
 - M8.5.15.1: пользователь прислал **6 Rust supervisor PASS**; строка C++ trailing-data в этом сообщении не показана, не подменять её фактом персонального Mac-теста.
 - M8.5.15.2: переносимый C++/Rust protocol proof на `Darwin arm64 Python 3.14.8` — **7 PASS**. CI: Linux x64/ARM64, macOS Intel/Apple Silicon, Windows x64 protocol — PASS; iOS/Android ARM64 **только parser cross-compile**.
-- M8.5.15.3: independently signed complete GGUF stream/hash inspection — **6 PASS**, и пользователь **повторно прислал эти же 6 PASS** в последнем сообщении. Они **НЕ означают выполнение M8.5.15.4**.
+- M8.5.15.3: independently signed complete GGUF stream/hash inspection — **6 PASS**.
+- M8.5.15.4 + M8.5.15.5: пользователь выполнил общий smoke на Mac — **10 PASS**, включая независимую подпись и snapshot (6), открытый дескриптор и повторное хеширование (4). **Это тест синтетического GGUF и не реальный инференс.**
 
-**Последний верхний PR #13 / M8.5.15.4**: GitHub CI уже **PASS**:
-- [Rust + новый snapshot smoke](https://github.com/vfgfgfbs56/jend/actions/runs/38446569781) — 6 новых PASS.
-- [Native IPC platform CI](https://github.com/vfgfgfbs56/jend/actions/runs/38446569729) — 6 jobs PASS (5 desktop + mobile compile).
-- [PostgreSQL smoke](https://github.com/vfgfgfbs56/jend/actions/runs/38446569592) — PASS.
-- **Mac M8.5.15.4 snapshot smoke пользователем ПОКА НЕ подтверждён.** Программа копирует, проверяет и публикует под SHA-256 синтетическую копию GGUF, но **не выдаёт её за immutable ОС handle и не запускает модель**.
+**PR #15 / M8.5.15.6a** — CI **PASS**, Mac-тест новой проверки ещё НЕ подтверждён:
+- [Rust + 6 native binary integrity smoke PASS](https://github.com/vfgfgfbs56/jend/actions/runs/38453537643) — прошли exact SHA-256, чужой digest, изменённый бинарник, size/path preflight, model-free IPC и отсутствие права production execution.
+- [Native IPC platform CI](https://github.com/vfgfgfbs56/jend/actions/runs/38453537749) — 6 jobs PASS (desktop и мобильная cross-compile).
+- [PostgreSQL security](https://github.com/vfgfgfbs56/jend/actions/runs/38453537545) — PASS.
+- **Ограничение:** для теста expected digest получен из локально собранного бинарника — это НЕ выпуск, подписанный доверенным Jend distributor. OS sandbox, race-free exec и реальный инференс остаются BLOCKED.
 
-Тест M8.5.15.4 на Mac:
+**PR #14 / M8.5.15.5**: GitHub CI уже **PASS**:
+- [Rust + pinned open-handle smoke](https://github.com/vfgfgfbs56/jend/actions/runs/38451463930) — 10 PASS в CI.
+- [Native IPC platform CI](https://github.com/vfgfgfbs56/jend/actions/runs/38451463874) — 6 jobs PASS (5 desktop + mobile compile).
+- [PostgreSQL smoke](https://github.com/vfgfgfbs56/jend/actions/runs/38451463814) — PASS.
+- **Mac M8.5.15.4–15.5: 10 PASS от пользователя подтверждены**. Но нельзя считать дескриптор неизменяемым при записи в тот же inode, native OS sandbox или инференсом реальной модели.
+
+Проверенный тест M8.5.15.4–15.5 на Mac:
 
 ```bash
 cd ~/Downloads
-git clone --branch feat/m8.5.15.4-verified-gguf-snapshot --single-branch https://github.com/vfgfgfbs56/jend.git jend-m8.5.15.4-test
-cd jend-m8.5.15.4-test
+git clone --branch feat/m8.5.15.5-pinned-gguf-file-handle --single-branch https://github.com/vfgfgfbs56/jend.git jend-m8.5.15.5-test
+cd jend-m8.5.15.5-test
 cargo generate-lockfile
 bash scripts/dev-verified-gguf-snapshot-smoke.sh
 ```
 
-Ожидаемые 6 строк:
+Ожидаемые 6 строк snapshot (дополнительно 4 pinned-handle PASS):
 ```text
 Jend GGUF independent release signature to private snapshot: PASS
 Jend GGUF source mutation cannot modify verified copy: PASS
@@ -112,23 +119,26 @@ Jend GGUF snapshot grants no native execution capability: PASS
 | 10 | [#11](https://github.com/vfgfgfbs56/jend/pull/11) | M8.5.15.2 portability |
 | 11 | [#12](https://github.com/vfgfgfbs56/jend/pull/12) | M8.5.15.3 signed GGUF intake |
 | 12 | [#13](https://github.com/vfgfgfbs56/jend/pull/13) | M8.5.15.4 private verified snapshot — предыдущий этап |
-| 13 | [#14](https://github.com/vfgfgfbs56/jend/pull/14) | M8.5.15.5 same-open-handle signed GGUF rehash; ещё не immutable OS backing |
+| 13 | [#14](https://github.com/vfgfgfbs56/jend/pull/14) | M8.5.15.5 same-open-handle signed GGUF rehash, Mac 10 PASS; ещё не immutable OS backing |
+| 14 | [#15](https://github.com/vfgfgfbs56/jend/pull/15) | M8.5.15.6a только проверка SHA-256 исполняемого native worker; NO production attestation / sandbox |
 
 ## 5. Очередь задач — последовательность и условия допуска
 
 ### СЕЙЧАС
 - [x] M8.5.15.3: signed whole GGUF + тест Mac 6 PASS.
-- [x] M8.5.15.4: private snapshot — CI PASS.
-- [ ] M8.5.15.4: **Mac 6 PASS** ещё не подтверждён пользователем.
-- [ ] Сверить текущие PR CI, review, mergeability; не путать PR #13 с main.
+- [x] M8.5.15.4: private snapshot — CI PASS и Mac 6 PASS в составе общего теста.
+- [x] M8.5.15.5: Mac **10 PASS** (включая 4 дескрипторные проверки) и GitHub CI PASS.
+- [ ] Сверить текущие PR CI, review, mergeability; не путать PR #14/#15 с main.
 - [ ] Проверить fail-closed snapshot store под **Windows ACL**, непредвиденные права родителей, TOCTOU/cache poisoning, падения и конкуренцию, fuzz/path traversal.
 - [ ] Не включать нативную загрузку GGUF до прочного trust/sandbox gate.
-- [ ] M8.5.15.5: получить CI для pinned open-file lease и затем Mac PASS; тесты и код не предоставляют права запуска модели.
+- [x] M8.5.15.6a: CI SHA-256 binary integrity smoke 6 PASS, portability и PostgreSQL PASS.
+- [ ] M8.5.15.6a: Mac 6 PASS для нового preflight ещё не подтверждены; **никакой sandbox или production exec не создан**.
 - [ ] Backend & Security Ready gate: завершить отдельно после Architecture v1 freeze, перед основным frontend; детали в §6.
 
 ### СЛЕДУЮЩИЕ ИНЖЕНЕРНЫЕ ЭТАПЫ (план, названия предварительные)
-- **M8.5.15.5 — pinned open-file identity (в работе):** один открытый дескриптор с подписью/повторным хешем; Unix inode/dev check, отклонение pathname substitution, same-inode mutation rehash. **Не immutable**: OS-protected sealed backing + safe native handoff остаются в дальнейшем security gate; Windows ACL/handle sharing, Android/iOS отдельно.
-- **M8.5.15.6 — sandboxed attested native worker:** pinned/verified worker binary, OS sandbox без сети и доступа к E2EE, ограничения RAM/CPU/fds/времени, kill descendants, fuzz IPC и GGUF pre-parser.
+- **M8.5.15.5 — pinned open-file identity (Mac 10 PASS):** один открытый дескриптор с подписью/повторным хешем; Unix inode/dev check, отклонение pathname substitution, same-inode mutation rehash. **Не immutable**: OS-protected sealed backing + safe native handoff остаются в дальнейшем security gate; Windows ACL/handle sharing, Android/iOS отдельно.
+- **M8.5.15.6a — native executable integrity preflight (в работе):** bounded streaming SHA-256 native worker binary против *независимо закреплённой* ожидаемой суммы; offline synthetic/dev fixture only, **не** доверенная подпись дистрибутива и **не** race-free exec.
+- **M8.5.15.6b — настоящий OS-sandboxed attested native worker (запланирован):** независимо подписанный исполняемый артефакт, OS-enforced sandbox без сети и доступа к E2EE, защищённая identity worker при исполнении, quotas RAM/CPU/fds/времени, kill descendants, fuzz IPC и GGUF pre-parser.
 - **M8.5.15.7 — первый реальный GGUF CPU fixture:** законно полученная маленькая **сторонняя** модель, независимо опубликованный digest + проверенные лицензия и цепочка подписанного Jend release metadata; реальная локальная генерация, токены/s, first-token latency, peak RSS на ARM64 и x64, не использовать секреты.
 - **M8.5.16 — architecture v1 freeze + multi-model catalog:** утверждённый signed variant schema, versioned backend ABI, раздельные runtime adapters, 2+ существующие model families, multi-source WeightFabric/cache/mirror fallback (по лицензии), trust-root enrollment, rollback/revocation/update policy, ясный UI local/remote и требования ко всем целевым платформам. **Не заявлять поддержку формата без рабочего backend.**
 - **M8.6 — backend/security integration:** настоящий проверенный GGUF execution baseline, модельные lifecycle API, OS isolation, persisted release trust, multi-origin download quotas и отказоустойчивость, кроссплатформенные тесты. GPU/Metal/ONNX/мобильное расширение выполняются по приоритету, не должны искусственно блокировать базовый API-контракт.
