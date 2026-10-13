@@ -253,7 +253,8 @@ mod tests {
         let signer = ModelReleaseSigningKey::generate().unwrap();
         let signed = signer.sign_manifest(manifest(&bytes)).unwrap();
         let mut corrupted = bytes.clone();
-        corrupted[corrupted.len()-1] ^= 1;
+        let last = corrupted.len() - 1;
+        corrupted[last] ^= 1;
         fs::write(&fixture.file, corrupted).unwrap();
         assert!(inspect_independently_signed_gguf(
             &signer.public_key(), &signed, &fixture.file, 1024).is_err());
