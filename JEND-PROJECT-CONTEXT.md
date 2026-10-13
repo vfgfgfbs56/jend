@@ -69,6 +69,12 @@ OPTIONAL REMOTE: только отдельная явная сессия BYOK/п
 - M8.5.15.3: independently signed complete GGUF stream/hash inspection — **6 PASS**.
 - M8.5.15.4 + M8.5.15.5: пользователь выполнил общий smoke на Mac — **10 PASS**, включая независимую подпись и snapshot (6), открытый дескриптор и повторное хеширование (4). **Это тест синтетического GGUF и не реальный инференс.**
 
+**PR #15 / M8.5.15.6a** — CI **PASS**, Mac-тест новой проверки ещё НЕ подтверждён:
+- [Rust + 6 native binary integrity smoke PASS](https://github.com/vfgfgfbs56/jend/actions/runs/38453537643) — прошли exact SHA-256, чужой digest, изменённый бинарник, size/path preflight, model-free IPC и отсутствие права production execution.
+- [Native IPC platform CI](https://github.com/vfgfgfbs56/jend/actions/runs/38453537749) — 6 jobs PASS (desktop и мобильная cross-compile).
+- [PostgreSQL security](https://github.com/vfgfgfbs56/jend/actions/runs/38453537545) — PASS.
+- **Ограничение:** для теста expected digest получен из локально собранного бинарника — это НЕ выпуск, подписанный доверенным Jend distributor. OS sandbox, race-free exec и реальный инференс остаются BLOCKED.
+
 **PR #14 / M8.5.15.5**: GitHub CI уже **PASS**:
 - [Rust + pinned open-handle smoke](https://github.com/vfgfgfbs56/jend/actions/runs/38451463930) — 10 PASS в CI.
 - [Native IPC platform CI](https://github.com/vfgfgfbs56/jend/actions/runs/38451463874) — 6 jobs PASS (5 desktop + mobile compile).
@@ -125,7 +131,8 @@ Jend GGUF snapshot grants no native execution capability: PASS
 - [ ] Сверить текущие PR CI, review, mergeability; не путать PR #14/#15 с main.
 - [ ] Проверить fail-closed snapshot store под **Windows ACL**, непредвиденные права родителей, TOCTOU/cache poisoning, падения и конкуренцию, fuzz/path traversal.
 - [ ] Не включать нативную загрузку GGUF до прочного trust/sandbox gate.
-- [ ] M8.5.15.6a: довести до CI новый native-worker SHA-256 integrity preflight, затем Mac PASS; **никакой sandbox или production exec не создан**.
+- [x] M8.5.15.6a: CI SHA-256 binary integrity smoke 6 PASS, portability и PostgreSQL PASS.
+- [ ] M8.5.15.6a: Mac 6 PASS для нового preflight ещё не подтверждены; **никакой sandbox или production exec не создан**.
 - [ ] Backend & Security Ready gate: завершить отдельно после Architecture v1 freeze, перед основным frontend; детали в §6.
 
 ### СЛЕДУЮЩИЕ ИНЖЕНЕРНЫЕ ЭТАПЫ (план, названия предварительные)
