@@ -9,6 +9,12 @@ mod xet_fetch_schedule;
 #[allow(dead_code)]
 #[path = "../xet_multipart.rs"]
 mod xet_multipart;
+#[allow(dead_code)]
+#[path = "../source_worker_transport.rs"]
+mod source_worker_transport;
+#[allow(dead_code)]
+#[path = "../xet_multi_fetch_transport.rs"]
+mod xet_multi_fetch_transport;
 
 use xet_fetch_schedule::{build_fetch_schedule, FetchScheduleError, FetchScheduleLimits};
 use xet_metadata::parse_v2_reconstruction;
@@ -102,6 +108,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("signed physical range binding mismatch".into());
     }
     println!("Jend Xet strict offline multipart parser: PASS");
+    // M8.5.10: rebind the same response to the typed signed range batch.
+    // This is offline and NEVER publishes decoded bytes to WeightVM.
+    let untrusted = xet_multi_fetch_transport::validate_signed_multipart_body(
+        &schedule.jobs[2].request,
+        reqwest::StatusCode::PARTIAL_CONTENT,
+        "multipart/byteranges; boundary=JEND",
+        sample,
+        xet_multipart::MultipartLimits::default(),
+    )?;
+    if untrusted.len() != 2
+        || untrusted[0].bytes != b"ABCDEFGH"
+        || untrusted[1].bytes != b"IJKLMNOP"
+        || untrusted[0].chunks.start != 5
+        || untrusted[1].chunks.start != 6
+        || untrusted.iter().any(|part| part.xorb_hash != schedule.jobs[2].request.xorb_hash)
+    {
+        return Err("signed multi-range physical identity binding mismatch".into());
+    }
+    println!("Jend Xet atomic signed multi-range response gate: PASS");
+
+    if xet_multi_fetch_transport::validate_signed_multipart_body(
+        &schedule.jobs[2].request,
+        reqwest::StatusCode::OK,
+        "multipart/byteranges; boundary=JEND",
+        sample,
+        xet_multipart::MultipartLimits::default(),
+    ).is_ok() {
+        return Err("unsigned/full-body 200 fallback was not rejected".into());
+    }
+    println!("Jend Xet HTTP 200 fallback rejected: PASS");
     println!("Jend Xet multipart network execution remains fail-closed: PASS");
     Ok(())
 }
