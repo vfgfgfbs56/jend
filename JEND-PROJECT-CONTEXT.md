@@ -75,7 +75,7 @@ OPTIONAL REMOTE: только отдельная явная сессия BYOK/п
 - [PostgreSQL security](https://github.com/vfgfgfbs56/jend/actions/runs/38456389693) — PASS.
 - ВАЖНО: seccomp **не изолирует filesystem/E2EE**, не применяется к настоящему GGUF inference, не реализует полноценный OS sandbox на Mac/Windows и не делает worker production-ready.
 
-**PR #15 / M8.5.15.6a** — CI **PASS**, Mac-тест новой проверки ещё НЕ подтверждён:
+**PR #15 / M8.5.15.6a** — CI **PASS**, Mac 6 PASS подтверждены пользователем:
 - [Rust + 6 native binary integrity smoke PASS](https://github.com/vfgfgfbs56/jend/actions/runs/38453537643) — прошли exact SHA-256, чужой digest, изменённый бинарник, size/path preflight, model-free IPC и отсутствие права production execution.
 - [Native IPC platform CI](https://github.com/vfgfgfbs56/jend/actions/runs/38453537749) — 6 jobs PASS (desktop и мобильная cross-compile).
 - [PostgreSQL security](https://github.com/vfgfgfbs56/jend/actions/runs/38453537545) — PASS.
