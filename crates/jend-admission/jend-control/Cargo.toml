@@ -1,0 +1,13 @@
+[package]
+name = "jend-control"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+jend-auth = { path = "../jend-auth" }
+jend-sync = { path = "../jend-sync" }
+jend-model-store = { path = "../jend-model-store" }
+thiserror = "2.0.21"
