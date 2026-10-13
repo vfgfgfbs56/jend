@@ -1,7 +1,7 @@
 # JEND — PROJECT CONTEXT & ROADMAP (памятка для нового чата)
 
 > **Обновлено:** 2026-10-13. **Текущий этап:** M8.5.15.5 (в разработке); последний проверенный backend-этап M8.5.15.4.  
-> **Основная ветка разработки:** `feat/m8.5.15.5-pinned-gguf-file-handle`, новый stacked PR поверх [#13](https://github.com/vfgfgfbs56/jend/pull/13).  
+> **Основная ветка разработки:** `feat/m8.5.15.5-pinned-gguf-file-handle`, [#14](https://github.com/vfgfgfbs56/jend/pull/14) поверх [#13](https://github.com/vfgfgfbs56/jend/pull/13).  
 > **Статус:** прототипы проверки/хранения моделей и взаимодействия Rust/C++; **реальный безопасный инференс сторонней модели в Jend пока НЕ реализован**.  
 > **Важно:** этот файл — редактируемый снимок на момент коммита, не автоматически обновляемые сведения о GitHub. Перед новым действием перечитать его и **проверить актуальное состояние PR, веток и CI**.
 
@@ -112,7 +112,7 @@ Jend GGUF snapshot grants no native execution capability: PASS
 | 10 | [#11](https://github.com/vfgfgfbs56/jend/pull/11) | M8.5.15.2 portability |
 | 11 | [#12](https://github.com/vfgfgfbs56/jend/pull/12) | M8.5.15.3 signed GGUF intake |
 | 12 | [#13](https://github.com/vfgfgfbs56/jend/pull/13) | M8.5.15.4 private verified snapshot — предыдущий этап |
-| 13 | PR #14 (создаётся) | M8.5.15.5 same-open-handle signed GGUF rehash; ещё не immutable OS backing |
+| 13 | [#14](https://github.com/vfgfgfbs56/jend/pull/14) | M8.5.15.5 same-open-handle signed GGUF rehash; ещё не immutable OS backing |
 
 ## 5. Очередь задач — последовательность и условия допуска
 
