@@ -45,6 +45,17 @@ pub struct VerifiedGgufSnapshotStore {
 struct RemoveStagingFile(PathBuf);
 impl Drop for RemoveStagingFile {
     fn drop(&mut self) {
+        // Windows refuses deletion of a read-only staging file, even when
+        // the last hard-link is durable. Clear only the staging alias first;
+        // never mutate the final content-addressed object's permissions.
+        #[cfg(windows)]
+        if let Ok(meta) = fs::symlink_metadata(&self.0) {
+            if meta.file_type().is_file() {
+                let mut p = meta.permissions();
+                p.set_readonly(false);
+                let _ = fs::set_permissions(&self.0, p);
+            }
+        }
         let _ = fs::remove_file(&self.0);
     }
 }
