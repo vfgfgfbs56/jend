@@ -207,7 +207,7 @@ mod tests {
         assert!(matches!(
             result, LocalFeasibility::FitsEstimatedResources {
                 required_ram: 3_892_314_112,
-                usable_ram: 7_516_192_768
+                usable_ram: 8_053_063_680
             }
         ));
     }
