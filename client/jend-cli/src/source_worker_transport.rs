@@ -23,6 +23,9 @@ const MAX_PATH_AND_QUERY: usize = 64 * 1024;
 const MAX_RESPONSE_HARD: u64 = 512 * 1024 * 1024;
 const MAX_CONNECT_TIMEOUT_MS: u64 = 30_000;
 const MAX_REQUEST_TIMEOUT_MS: u64 = 120_000;
+// A single signed multi-range entry may contain at most 16 MiB of physical
+// xorb payload plus 128 KiB of MIME framing. Never allow a whole-object 200.
+const MAX_MULTIPART_RESPONSE_HARD: u64 = 16 * 1024 * 1024 + 128 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ExpectedResponse {
@@ -33,6 +36,9 @@ pub enum ExpectedResponse {
     Json200,
     /// Exact range bytes. Full-file `200 OK` fallback is forbidden.
     SingleRange206 { expected_len: u64 },
+    /// Bounded multipart response. The authorized range set is checked by the
+    /// typed signed-Xet adapter after the transport enforces HTTP 206 and caps.
+    Multipart206 { max_body_bytes: u64 },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -172,6 +178,11 @@ pub async fn execute_pinned_get(
 
     let url = format!("https://{}{}", request.host, request.path_and_query);
     let mut builder = client.get(url);
+    if matches!(request.expected, ExpectedResponse::Multipart206 { .. }) {
+        // Do not negotiate transparent response decompression: Range offsets
+        // refer to on-wire xorb bytes, not transformed representations.
+        builder = builder.header(reqwest::header::ACCEPT_ENCODING, "identity");
+    }
     if let Some(range) = &request.range_header {
         builder = builder.header(reqwest::header::RANGE, range);
     }
@@ -185,6 +196,7 @@ pub async fn execute_pinned_get(
         .map_err(|_| TransportError::RequestFailed)?;
     let status = response.status();
     validate_status(request.expected, status)?;
+    validate_response_headers(response.headers(), request.expected)?;
 
     let announced = response.content_length();
     let expected_len = match request.expected {
@@ -259,8 +271,21 @@ fn validate_request_shape(request: &PinnedGetRequest) -> Result<(), TransportErr
             return Err(TransportError::InvalidRequest);
         };
         if range.contains(',') {
-            // M8.5.2 owns multipart/byteranges parsing. Do not pretend the
-            // single-range byte-count gate is valid for multipart bodies.
+            // Single-range execution must never accept comma-separated ranges.
+            return Err(TransportError::InvalidRequest);
+        }
+    }
+    if let ExpectedResponse::Multipart206 { max_body_bytes } = request.expected {
+        let Some(range) = request.range_header.as_deref() else {
+            return Err(TransportError::InvalidRequest);
+        };
+        if !range.contains(',')
+            || max_body_bytes == 0
+            || max_body_bytes > MAX_MULTIPART_RESPONSE_HARD
+            || request.limits.max_response_bytes > max_body_bytes
+            || request.bearer.is_some()
+        {
+            // Signed Xet CDNs use signed URLs, not a forwarded Hub token.
             return Err(TransportError::InvalidRequest);
         }
     }
@@ -274,12 +299,33 @@ fn validate_status(expected: ExpectedResponse, status: StatusCode) -> Result<(),
         ExpectedResponse::SingleRange206 { expected_len } => {
             expected_len > 0 && status == StatusCode::PARTIAL_CONTENT
         }
+        ExpectedResponse::Multipart206 { max_body_bytes } => {
+            max_body_bytes > 0 && status == StatusCode::PARTIAL_CONTENT
+        }
     };
     if ok {
         Ok(())
     } else {
         Err(TransportError::UnexpectedStatus)
     }
+}
+
+fn validate_response_headers(
+    headers: &reqwest::header::HeaderMap,
+    expected: ExpectedResponse,
+) -> Result<(), TransportError> {
+    if matches!(expected, ExpectedResponse::Multipart206 { .. }) {
+        if headers.get_all(reqwest::header::CONTENT_TYPE).iter().count() != 1
+            || headers.get_all(reqwest::header::CONTENT_LENGTH).iter().count() > 1
+            || headers.contains_key(reqwest::header::CONTENT_ENCODING)
+            || headers.contains_key(reqwest::header::CONTENT_RANGE)
+        {
+            // A multipart 206 must not be transparently decompressed or
+            // reinterpreted as a single Content-Range at the top level.
+            return Err(TransportError::InvalidHeader);
+        }
+    }
+    Ok(())
 }
 
 fn optional_header_ascii(
@@ -423,6 +469,51 @@ mod tests {
         assert!(!is_public_ip("10.0.0.1".parse().unwrap()));
         assert!(!is_public_ip("::1".parse().unwrap()));
         assert!(is_public_ip("8.8.8.8".parse().unwrap()));
+    }
+
+    #[test]
+    fn multipart_requires_exact_206_and_atomic_bounded_range_header() {
+        let request = PinnedGetRequest {
+            host: "us.aws.cdn.hf.co".to_owned(),
+            path_and_query: "/xorbs/default/test?Signature=secret".to_owned(),
+            range_header: Some("bytes=0-7,20-27".to_owned()),
+            bearer: None,
+            expected: ExpectedResponse::Multipart206 { max_body_bytes: 1024 },
+            limits: TransportLimits { max_response_bytes: 1024, connect_timeout_ms: 1000, request_timeout_ms: 2000 },
+        };
+        assert!(validate_request_shape(&request).is_ok());
+        assert!(validate_status(request.expected, StatusCode::PARTIAL_CONTENT).is_ok());
+        assert!(validate_status(request.expected, StatusCode::OK).is_err());
+        assert!(validate_status(request.expected, StatusCode::FOUND).is_err());
+
+        let mut bad = request;
+        bad.range_header = Some("bytes=0-7".to_owned());
+        assert!(validate_request_shape(&bad).is_err());
+        bad.range_header = Some("bytes=0-7,20-27".to_owned());
+        bad.limits.max_response_bytes = 1025;
+        assert!(validate_request_shape(&bad).is_err());
+        bad.limits.max_response_bytes = 1024;
+        bad.expected = ExpectedResponse::Multipart206 { max_body_bytes: MAX_MULTIPART_RESPONSE_HARD + 1 };
+        assert!(validate_request_shape(&bad).is_err());
+    }
+
+    #[test]
+    fn multipart_rejects_top_level_range_encoding_and_duplicate_mime() {
+        use reqwest::header::{HeaderMap, HeaderValue, CONTENT_ENCODING, CONTENT_RANGE, CONTENT_TYPE};
+        let expected = ExpectedResponse::Multipart206 { max_body_bytes: 4096 };
+        let mut h = HeaderMap::new();
+        h.insert(CONTENT_TYPE, HeaderValue::from_static("multipart/byteranges; boundary=JEND"));
+        assert!(validate_response_headers(&h, expected).is_ok());
+        h.insert(CONTENT_ENCODING, HeaderValue::from_static("gzip"));
+        assert!(validate_response_headers(&h, expected).is_err());
+        h.remove(CONTENT_ENCODING);
+        h.insert(CONTENT_RANGE, HeaderValue::from_static("bytes 0-1/3"));
+        assert!(validate_response_headers(&h, expected).is_err());
+        h.remove(CONTENT_RANGE);
+        h.append(CONTENT_TYPE, HeaderValue::from_static("multipart/byteranges; boundary=Evil"));
+        assert!(validate_response_headers(&h, expected).is_err());
+        h.remove(CONTENT_TYPE);
+        assert!(validate_response_headers(&h, expected).is_err());
     }
 
     #[test]
