@@ -1617,4 +1617,47 @@ require(
     "M8.5.14 resource feasibility must not add network to model-store",
 )
 
+# M8.5.15: native inference must remain a separately enabled and
+# version-pinned experiment, never a generic downloaded-model code loader.
+native_gguf = read("native/jend-gguf-worker/worker.cpp")
+native_cmake = read("native/jend-gguf-worker/CMakeLists.txt")
+native_smoke = read("scripts/dev-native-gguf-worker-protocol-smoke.sh")
+native_docs = read("docs/M8.5.15-PINNED-GGUF-CPU-WORKER-PROOF.md")
+for required in [
+    "JEND_WITH_LLAMA",
+    "JEND_ENABLE_UNSANDBOXED_NATIVE_DEV_EXPERIMENT",
+    "kMaxPromptBytes = 4096",
+    "kMaxGeneratedTokens = 16",
+    "JENDGGUF1",
+    "NO_MODEL",
+    "llama_model_load_from_file",
+    "llama_sampler_sample",
+    "n_gpu_layers = 0",
+    "read_prompt",
+    "preflight_dev_path",
+]:
+    require(required in native_gguf, f"M8.5.15 native worker security contract missing: {required}")
+for required in [
+    "45451c366d4256f94fbc8845645e31a6b9155054",
+    "NOT LLAMA_HEAD STREQUAL JEND_PINNED_LLAMA_SHA",
+    "JEND_BUILD_EXPERIMENTAL_LLAMA",
+]:
+    require(required in native_cmake, f"M8.5.15 mandatory llama.cpp source pin absent: {required}")
+for required in [
+    "JEND_BUILD_EXPERIMENTAL_LLAMA=OFF",
+    "Jend native bounded binary prompt and response framing: PASS",
+    "Jend native unchecked GGUF launch blocked by default: PASS",
+    "Jend native protocol smoke executes no GGUF inference: PASS",
+]:
+    require(required in native_smoke, f"M8.5.15 model-free native protocol regression missing: {required}")
+require(
+    "NOT secure production inference" in native_docs
+    and (ROOT / "native/jend-gguf-worker/worker.cpp").is_file(),
+    "M8.5.15 dev prototype cannot be advertised as secure production inference",
+)
+require(
+    "reqwest" not in read("crates/jend-model-store/Cargo.toml"),
+    "M8.5.15 must preserve model-store network isolation",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")
