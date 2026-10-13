@@ -1,0 +1,27 @@
+M6.1 static audit record
+========================
+
+Confirmed source/API repairs:
+- chacha20poly1305 0.11: removed obsolete generic root Key::<Cipher> construction.
+- chacha20poly1305/hybrid-array: removed deprecated XNonce::from_slice use.
+- hkdf 0.13 + SHA-2: jend-auth recovery now uses sha2 0.11.
+- opaque-ke 4.0.1 digest compatibility: OPAQUE TripleDh SHA-512 uses renamed sha2 0.10.9.
+- dependency-policy understands Cargo package aliases.
+
+Available checks executed in this environment:
+- scripts/static-preflight.py
+- scripts/dependency-policy.py
+- Python syntax compilation for scripts/*.py
+- bash -n for scripts/*.sh
+- TOML parse for every Cargo.toml and rust-toolchain.toml
+- YAML parse for .github/workflows/headless-ci.yml
+- project manifest verification after regeneration
+- archive secret-name scan and archive-root verification
+
+Not executed here:
+- cargo fmt
+- cargo check
+- cargo test
+- PostgreSQL migrations/runtime smoke
+
+Reason: no Rust/Cargo/PostgreSQL/Docker runtime is available in the current execution container.

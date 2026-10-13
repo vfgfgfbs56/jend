@@ -1,0 +1,39 @@
+[Unit]
+Description=Jend local cryptographic vault
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/jend-vaultd
+Restart=on-failure
+
+# The central M1 security boundary: Vault gets local IPC but no Internet stack.
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+
+# Filesystem/process hardening.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+RuntimeDirectory=jend
+RuntimeDirectoryMode=0700
+StateDirectory=jend-vault
+StateDirectoryMode=0700
+
+Environment=JEND_VAULT_STATE_DIR=/var/lib/jend-vault/state
+Environment=JEND_VAULT_SECRET_DIR=/var/lib/jend-vault/secrets
+Environment=JEND_VAULT_SOCKET=/run/jend/vault.sock
+
+[Install]
+WantedBy=default.target

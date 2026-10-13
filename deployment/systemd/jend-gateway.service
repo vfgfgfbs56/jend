@@ -1,0 +1,25 @@
+[Unit]
+Description=Jend Rust Gateway
+After=network-online.target
+
+[Service]
+ExecStart=/opt/jend/bin/jend-gateway
+User=jend-gateway
+Group=jend-gateway
+Environment=JEND_GATEWAY_ADDR=127.0.0.1:8080
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

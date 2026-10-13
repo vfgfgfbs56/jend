@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jend
+      POSTGRES_USER: jend_dev
+      POSTGRES_PASSWORD: jend_dev_only_change_me
+    ports:
+      - "127.0.0.1:54329:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jend_dev -d jend"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - jend_pg_dev:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  jend_pg_dev:

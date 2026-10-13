@@ -1,0 +1,50 @@
+# RETIRED PRE-M5.4 DRAFT — NOT A DATABASE MIGRATION
+# The canonical model control-plane schema already lives in deployment/postgres/001_control_plane.sql.
+# This old draft also defined model_entitlements incompatibly and would break a fresh SQLx migration run.
+
+-- Jend model-store control plane.
+-- Models are public/product content, not conversation data. Model bytes live in
+-- object storage/CDN and are authenticated by client-verified signed manifests.
+
+CREATE TABLE models (
+    model_id UUID PRIMARY KEY,
+    display_name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    status SMALLINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE model_versions (
+    model_id UUID NOT NULL REFERENCES models(model_id) ON DELETE CASCADE,
+    version BIGINT NOT NULL CHECK (version > 0),
+    signed_manifest BYTEA NOT NULL,
+    total_size BIGINT NOT NULL CHECK (total_size > 0),
+    published_at TIMESTAMPTZ,
+    status SMALLINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (model_id, version)
+);
+
+-- Exactly three account-level slots (0,1,2). A slot says which model the
+-- official service currently entitles, not that old bytes are remotely erased
+-- from user-controlled storage.
+CREATE TABLE model_entitlements (
+    account_id UUID NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    slot SMALLINT NOT NULL CHECK (slot BETWEEN 0 AND 2),
+    model_id UUID NOT NULL REFERENCES models(model_id),
+    changed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (account_id, slot),
+    UNIQUE (account_id, model_id)
+);
+
+-- Installations are distinct from the three model choices. The same entitled
+-- model may be installed on several trusted devices subject to product policy.
+CREATE TABLE model_installations (
+    account_id UUID NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    device_id BYTEA NOT NULL CHECK (octet_length(device_id) = 16),
+    model_id UUID NOT NULL REFERENCES models(model_id),
+    model_version BIGINT NOT NULL CHECK (model_version > 0),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (account_id, device_id, model_id),
+    FOREIGN KEY (account_id, model_id)
+        REFERENCES model_entitlements(account_id, model_id) ON DELETE CASCADE
+);
