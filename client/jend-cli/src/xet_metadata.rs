@@ -355,7 +355,7 @@ fn validate_hf_cdn_bridge_path(path: &str, expected_hash: &str) -> Result<(), Pa
     Ok(())
 }
 
-fn validate_signed_xorb_url(url: &str, expected_hash: &str) -> Result<(), ParseError> {
+pub(crate) fn validate_signed_xorb_url(url: &str, expected_hash: &str) -> Result<(), ParseError> {
     if url.is_empty() {
         return Err(ParseError::SignedUrlInvalidScheme);
     }
