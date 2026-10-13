@@ -19,6 +19,7 @@ use zeroize::Zeroizing;
 
 /// Raw physical xorb data. Never pass this into WeightVM; it still requires
 /// bounded xorb decoding, logical assembly and independent signed page hash.
+#[derive(Clone)]
 pub struct UntrustedXorbPhysicalRange {
     pub xorb_hash: String,
     pub chunks: ChunkSpan,
