@@ -114,4 +114,4 @@ pub use runtime_feasibility::{
 
 pub use signed_gguf::{VerifiedGgufInspection, inspect_independently_signed_gguf};
 
-pub use gguf_snapshot::{VerifiedGgufSnapshot, VerifiedGgufSnapshotStore};
+pub use gguf_snapshot::{VerifiedGgufSnapshot, VerifiedGgufSnapshotStore, VerifiedGgufOpenLease};

@@ -19,11 +19,46 @@ use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
 
 use crate::{
     inspect_independently_signed_gguf, ManifestId, ModelReleasePublicKey,
+    VerifiedGgufInspection,
     ModelStoreError, Result, SignedModelManifest,
 };
 
 const MAX_SNAPSHOT_GGUF_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 const BUFFER_SIZE: usize = 64 * 1024;
+
+/// A **read-only opened OS file description**, verified against a separately
+/// trusted release signature. Its identity survives pathname replacement.
+/// It is NOT immutable against in-place writes by another same-user process
+/// and deliberately exposes neither the raw File nor a native worker path.
+#[derive(Debug)]
+pub struct VerifiedGgufOpenLease {
+    file: File,
+    inspection: VerifiedGgufInspection,
+}
+
+impl VerifiedGgufOpenLease {
+    pub fn inspection(&self) -> VerifiedGgufInspection {
+        self.inspection
+    }
+
+    /// Rehash the *same* open descriptor rather than reopening its pathname.
+    /// This detects in-place modification, but CANNOT prevent writes that
+    /// happen later; production requires OS-enforced content immutability.
+    pub fn reverify(
+        &mut self,
+        key: &ModelReleasePublicKey,
+        signed: &SignedModelManifest,
+        allowed_bytes: u64,
+    ) -> Result<VerifiedGgufInspection> {
+        let inspection = crate::signed_gguf::inspect_independently_signed_gguf_open_file(
+            key, signed, &mut self.file, allowed_bytes,
+        )?;
+        if inspection != self.inspection {
+            return Err(ModelStoreError::InvalidManifest);
+        }
+        Ok(inspection)
+    }
+}
 
 #[derive(Debug)]
 pub struct VerifiedGgufSnapshot {
@@ -202,6 +237,41 @@ impl VerifiedGgufSnapshotStore {
         }
         inspect_independently_signed_gguf(key, signed, path, allowed_bytes)?;
         Ok(())
+    }
+
+    /// Open a content-addressed snapshot **once** and validate that exact
+    /// open file description. The returned capability has NO public raw file
+    /// descriptor, pathname or method to authorize native code execution.
+    /// Do not use this as a production stable-memory snapshot or worker grant.
+    pub fn open_verified_handle(
+        &self,
+        trusted_key: &ModelReleasePublicKey,
+        signed: &SignedModelManifest,
+        allowed_bytes: u64,
+    ) -> Result<VerifiedGgufOpenLease> {
+        trusted_key.verify(signed)?;
+        self.check_layout()?;
+        let path = self.object_path(signed.manifest.whole_model_sha256);
+        let initial = fs::symlink_metadata(&path)?;
+        if !initial.file_type().is_file() || initial.file_type().is_symlink() {
+            return Err(ModelStoreError::InvalidWeightPageStore);
+        }
+        let mut file = File::open(&path)?;
+        let opened = file.metadata()?;
+        if !opened.is_file() || opened.len() != initial.len() {
+            return Err(ModelStoreError::InvalidWeightPageStore);
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            if initial.dev() != opened.dev() || initial.ino() != opened.ino() {
+                return Err(ModelStoreError::InvalidWeightPageStore);
+            }
+        }
+        let inspection = crate::signed_gguf::inspect_independently_signed_gguf_open_file(
+            trusted_key, signed, &mut file, allowed_bytes,
+        )?;
+        Ok(VerifiedGgufOpenLease { file, inspection })
     }
 
     fn check_layout(&self) -> Result<()> {
