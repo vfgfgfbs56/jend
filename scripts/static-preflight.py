@@ -1413,4 +1413,34 @@ require((ROOT / "scripts/dev-xet-fetch-schedule-smoke.sh").is_file(), "M8.5.8 sc
 require("range.contains(',')" in transport_m854, "M8.5.8 multipart execution must remain blocked by single-range transport")
 require("MultiRange206" not in transport_m854, "M8.5.8 must not enable multipart network execution early")
 
+# M8.5.10 adds only one atomic signed fetch-entry execution path. It must
+# preserve the existing single-range comma rejection and must not admit pages.
+multi_transport_m8510 = read("client/jend-cli/src/xet_multi_fetch_transport.rs")
+multi_smoke_m8510 = read("client/jend-cli/src/bin/jend-xet-fetch-schedule-smoke.rs")
+for required in [
+    "execute_signed_xet_multi_range",
+    "validate_signed_multipart_body",
+    "validate_signed_xorb_url",
+    "authorized_payload_bytes",
+    "Multipart206",
+    "UntrustedXorbPhysicalRange",
+    "StatusCode::PARTIAL_CONTENT",
+]:
+    require(required in multi_transport_m8510 or required in source_transport_m851, f"M8.5.10 signed HTTP 206 gate missing: {required}")
+require(
+    "ExpectedResponse::Multipart206" in source_transport_m851
+    and "validate_response_headers(response.headers(), request.expected)" in source_transport_m851,
+    "M8.5.10 bounded multipart transport response headers not enforced",
+)
+require(
+    "Jend Xet atomic signed multi-range response gate: PASS" in multi_smoke_m8510
+    and "Jend Xet HTTP 200 fallback rejected: PASS" in multi_smoke_m8510,
+    "M8.5.10 offline network authorization smoke missing",
+)
+require(
+    "jend_model_store" not in multi_transport_m8510
+    and "WeightVM admission" not in multi_transport_m8510,
+    "M8.5.10 unverified physical bytes cannot become WeightVM admission",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")
