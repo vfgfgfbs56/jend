@@ -14,6 +14,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt
       - name: Enforce source policy and project integrity
@@ -21,6 +23,11 @@ jobs:
           python3 scripts/static-preflight.py
           python3 scripts/dependency-policy.py
           python3 scripts/verify-manifest.py
+      - name: Require current Jend root project context in each substantive PR
+        env:
+          JEND_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          JEND_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/check-project-context-update.py
       - name: Existing rustfmt baseline drift (non-blocking until normalized)
         continue-on-error: true
         run: cargo fmt --all -- --check
@@ -40,3 +47,5 @@ jobs:
         run: bash scripts/dev-native-gguf-rust-supervisor-smoke.sh
       - name: Prove independently release-signed GGUF whole-file intake and reject corrupt bytes
         run: bash scripts/dev-signed-gguf-intake-smoke.sh
+      - name: Prove content-addressed signed GGUF snapshot survives mutable source and rejects bad bytes
+        run: bash scripts/dev-verified-gguf-snapshot-smoke.sh
