@@ -1,7 +1,7 @@
 # JEND — PROJECT CONTEXT & ROADMAP (памятка для нового чата)
 
 > **Обновлено:** 2026-10-13. **Текущий этап:** M8.5.15.6b Linux-only restricted-process probe (в разработке); последний подтверждённый Mac-тест — M8.5.15.6a, 6 PASS.  
-> **Основная ветка разработки:** `feat/m8.5.15.6b-linux-native-restricted-probe`, новый stacked PR поверх [#15](https://github.com/vfgfgfbs56/jend/pull/15).  
+> **Основная ветка разработки:** `feat/m8.5.15.6b-linux-native-restricted-probe`, [#16](https://github.com/vfgfgfbs56/jend/pull/16) поверх [#15](https://github.com/vfgfgfbs56/jend/pull/15).  
 > **Статус:** прототипы проверки/хранения моделей и взаимодействия Rust/C++; **реальный безопасный инференс сторонней модели в Jend пока НЕ реализован**.  
 > **Важно:** этот файл — редактируемый снимок на момент коммита, не автоматически обновляемые сведения о GitHub. Перед новым действием перечитать его и **проверить актуальное состояние PR, веток и CI**.
 
@@ -121,7 +121,7 @@ Jend GGUF snapshot grants no native execution capability: PASS
 | 12 | [#13](https://github.com/vfgfgfbs56/jend/pull/13) | M8.5.15.4 private verified snapshot — предыдущий этап |
 | 13 | [#14](https://github.com/vfgfgfbs56/jend/pull/14) | M8.5.15.5 same-open-handle signed GGUF rehash, Mac 10 PASS; ещё не immutable OS backing |
 | 14 | [#15](https://github.com/vfgfgfbs56/jend/pull/15) | M8.5.15.6a worker SHA-256, CI и Mac 6 PASS; NO production attestation / sandbox |
-| 15 | PR #16 (создаётся) | M8.5.15.6b Linux-only seccomp/rlimit protocol probe; macOS/Windows reject; никакого реального GGUF запуска |
+| 15 | [#16](https://github.com/vfgfgfbs56/jend/pull/16) | M8.5.15.6b Linux-only seccomp/rlimit protocol probe; macOS/Windows reject; никакого реального GGUF запуска |
 
 ## 5. Очередь задач — последовательность и условия допуска
 
