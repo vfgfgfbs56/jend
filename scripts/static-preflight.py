@@ -1799,7 +1799,7 @@ for required in [
 ]:
     require(required in gguf_snapshot_smoke, f"M8.5.15.4 negative smoke missing: {required}")
 require(
-    "NOT a native worker" in gguf_snapshot_docs
+    "not a native worker" in gguf_snapshot_docs
     and (ROOT / "scripts/dev-verified-gguf-snapshot-smoke.sh").is_file(),
     "M8.5.15.4 verified snapshot must NOT imply native execution",
 )
