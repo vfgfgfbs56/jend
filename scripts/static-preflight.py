@@ -1897,4 +1897,41 @@ require(
     "M8.5.15.6a release-signed executable attestation not yet production-ready",
 )
 
+# M8.5.15.6b: Linux kernel-applied syscall filter in model-FREE worker.
+# Any OS lacking this exact probe must refuse; it is not a full file sandbox.
+linux_probe = read("native/jend-gguf-worker/linux_sandbox_probe.h")
+linux_entrypoint = read("native/jend-gguf-worker/worker.cpp")
+linux_test = read("scripts/dev-native-linux-seccomp-probe.py")
+linux_docs = read("docs/M8.5.15.6B-LINUX-SECCOMP-PROBE.md")
+linux_matrix = read(".github/workflows/native-ipc-portability.yml")
+for check in [
+    "PR_SET_NO_NEW_PRIVS", "PR_SET_SECCOMP",
+    "PR_GET_SECCOMP", "SECCOMP_MODE_FILTER",
+    "SECCOMP_RET_ERRNO | EPERM",
+    "AUDIT_ARCH_X86_64", "AUDIT_ARCH_AARCH64",
+    "__NR_socket", "__NR_clone", "__NR_execve",
+    "RLIMIT_AS", "RLIMIT_NOFILE", "RLIMIT_CPU", "RLIMIT_CORE",
+    "errno == EPERM",
+]:
+    require(check in linux_probe, f"M8.5.15.6b actual Linux restriction missing: {check}")
+for check in [
+    '"--sandbox-probe"', "jend_linux_probe::install_restrictions()",
+    "jend_linux_probe::verify_active_restrictions()",
+    "defined(__linux__) && !defined(JEND_WITH_LLAMA)",
+]:
+    require(check in linux_entrypoint, f"M8.5.15.6b worker entrypoint missing: {check}")
+for check in [
+    'platform.system() == "Linux"',
+    "Jend Linux seccomp no-new-privs and network denial: PASS",
+    "Jend unsupported desktop OS native sandbox refused: PASS",
+    "Jend native probe proves NO filesystem or E2EE isolation: PASS",
+]:
+    require(check in linux_test, f"M8.5.15.6b real-device security proof missing: {check}")
+require(
+    "dev-native-linux-seccomp-probe.py" in linux_matrix
+    and "NO filesystem or E2EE isolation" in linux_docs
+    and "M8.5.15.6b" in read("JEND-PROJECT-CONTEXT.md"),
+    "M8.5.15.6b partial sandbox cannot be advertised as production isolation",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")
