@@ -1,0 +1,12 @@
+[package]
+name = "jend-jreq"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+sha2 = "0.11.0"
+thiserror = "2.0.21"
+jend-sync = { path = "../jend-sync" }

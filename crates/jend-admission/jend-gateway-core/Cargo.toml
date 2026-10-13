@@ -1,0 +1,15 @@
+[package]
+name = "jend-gateway-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+jend-admission = { path = "../jend-admission" }
+jend-auth = { path = "../jend-auth" }
+jend-capability = { path = "../jend-capability" }
+jend-model-store = { path = "../jend-model-store" }
+jend-sync = { path = "../jend-sync" }
+thiserror = "2.0.21"
