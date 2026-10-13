@@ -65,7 +65,10 @@ bool read_prompt(std::string& prompt) {
                     static_cast<uint32_t>(static_cast<uint8_t>(b[3]));
     if (n == 0 || n > kMaxPromptBytes) return false;
     prompt.resize(n);
-    return static_cast<bool>(std::cin.read(prompt.data(), static_cast<std::streamsize>(n)));
+    if (!std::cin.read(prompt.data(), static_cast<std::streamsize>(n))) return false;
+    // This is a one-shot worker: no ambiguous trailing command or second
+    // prompt is permitted. The parent MUST close its stdin after the frame.
+    return std::cin.peek() == std::char_traits<char>::eof();
 }
 
 #ifdef JEND_WITH_LLAMA
