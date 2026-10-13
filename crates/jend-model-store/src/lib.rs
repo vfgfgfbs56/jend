@@ -27,6 +27,7 @@ mod hf_xet;
 mod source_worker;
 mod safety;
 mod weightvm;
+mod runtime_feasibility;
 mod weight_store;
 mod virtual_map;
 
@@ -101,4 +102,10 @@ pub use hf_xet::{
 pub use source_worker::{
     BoundedSourceResponse, SourceResponseKind, SourceWorkerLimits,
     validate_resolved_addresses,
+};
+
+pub use runtime_feasibility::{
+    ArtifactFormat, NativeEngine, DeviceCompute, WeightComputeTopology,
+    VariantResourceEstimate, DeviceResourceEstimate, LocalFeasibility,
+    estimate_local_feasibility,
 };
