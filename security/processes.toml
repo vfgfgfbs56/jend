@@ -1,0 +1,61 @@
+# Jend process capability policy — architecture baseline.
+# Production builds should bind this policy into the threshold-signed release manifest.
+
+[process.vault]
+network = false
+raw_key_access = true
+plaintext_access = true
+sync_epoch_keys = true
+model_weights = false
+allowed_ipc = ["ui", "local_ai", "network"]
+notes = "Network IPC must be typed/opaque-only. Release security is still required because a malicious plaintext-owning process can attempt covert channels through allowed outputs."
+
+[process.ui]
+network = false
+raw_key_access = false
+plaintext_access = true
+sync_epoch_keys = false
+model_weights = false
+allowed_ipc = ["vault", "local_ai"]
+
+[process.local_ai]
+network = false
+raw_key_access = false
+plaintext_access = true
+sync_epoch_keys = false
+model_weights = true
+allowed_ipc = ["vault", "ui"]
+
+[process.network]
+network = true
+raw_key_access = false
+plaintext_access = false
+sync_epoch_keys = false
+model_weights = false
+allowed_ipc = ["vault", "auth_helper", "model_downloader"]
+
+[process.auth_helper]
+network = false
+raw_key_access = false
+plaintext_access = false
+password_access = true
+sync_epoch_keys = false
+model_weights = false
+allowed_ipc = ["ui", "network"]
+
+[process.model_downloader]
+network = true
+raw_key_access = false
+plaintext_access = false
+sync_epoch_keys = false
+model_weights = true
+allowed_ipc = ["network", "ui"]
+
+[process.net_broker]
+network = true
+raw_key_access = false
+plaintext_access = "scoped_web_only"
+sync_epoch_keys = false
+model_weights = false
+allowed_ipc = ["local_ai", "ui", "network"]
+notes = "Only broker-authorized web/tool payloads may cross this boundary. No conversation database, Vault keys, arbitrary filesystem, raw sockets for Local AI, or unrestricted URL fetch API. HTTPS only; public-IP pinning; redirects revalidated."
