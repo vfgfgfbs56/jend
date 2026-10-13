@@ -2,7 +2,7 @@
 
 // Offline policy smoke only. No GGUF/ONNX inference or loading is claimed.
 use jend_model_store::{
-    ArtifactFormat, DeviceCompute, DeviceResourceEstimate, LocalFeasibility,
+    RuntimeArtifactFormat, DeviceCompute, DeviceResourceEstimate, LocalFeasibility,
     NativeEngine, VariantResourceEstimate, WeightComputeTopology,
     estimate_local_feasibility,
 };
@@ -12,7 +12,7 @@ const MIB: u64 = 1024 * 1024;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gguf = VariantResourceEstimate {
-        format: ArtifactFormat::Gguf,
+        format: RuntimeArtifactFormat::Gguf,
         engine: NativeEngine::LlamaCppCpu,
         topology: WeightComputeTopology::Dense,
         weight_bytes: 3 * GIB,
@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Jend compatible GGUF CPU resource estimate: PASS");
 
     let unknown = VariantResourceEstimate {
-        format: ArtifactFormat::Safetensors, ..gguf
+        format: RuntimeArtifactFormat::Safetensors, ..gguf
     };
     if estimate_local_feasibility(unknown, good)
         != LocalFeasibility::MissingArchitectureAdapter
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Jend standalone safetensors inference refused: PASS");
 
     let mismatch = VariantResourceEstimate {
-        format: ArtifactFormat::Onnx, ..gguf
+        format: RuntimeArtifactFormat::Onnx, ..gguf
     };
     if estimate_local_feasibility(mismatch, good)
         != LocalFeasibility::IncompatibleBackend
