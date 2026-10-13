@@ -45,17 +45,6 @@ pub struct VerifiedGgufSnapshotStore {
 struct RemoveStagingFile(PathBuf);
 impl Drop for RemoveStagingFile {
     fn drop(&mut self) {
-        // Windows refuses deletion of a read-only staging file, even when
-        // the last hard-link is durable. Clear only the staging alias first;
-        // never mutate the final content-addressed object's permissions.
-        #[cfg(windows)]
-        if let Ok(meta) = fs::symlink_metadata(&self.0) {
-            if meta.file_type().is_file() {
-                let mut p = meta.permissions();
-                p.set_readonly(false);
-                let _ = fs::set_permissions(&self.0, p);
-            }
-        }
         let _ = fs::remove_file(&self.0);
     }
 }
@@ -181,8 +170,16 @@ impl VerifiedGgufSnapshotStore {
             }
             Err(error) => return Err(ModelStoreError::Io(error)),
         }
-        // The staging guard removes the temporary directory entry. The final
-        // hardlink retains the verified bytes under their content hash.
+        // Unlink the staging alias before applying the Windows read-only bit:
+        // permissions are shared by hardlinks on NTFS. The guard still cleans
+        // partial failures; on Unix the file was already mode 0400.
+        fs::remove_file(&stage_path)?;
+        #[cfg(windows)]
+        {
+            let mut p = fs::metadata(&path)?.permissions();
+            p.set_readonly(true);
+            fs::set_permissions(&path, p)?;
+        }
         Ok(VerifiedGgufSnapshot {
             manifest_id: signed.manifest_id,
             byte_length: m.total_plaintext_len,
@@ -262,11 +259,7 @@ fn set_readonly(file: &File) -> Result<()> {
         file.set_permissions(permissions)?;
     }
     #[cfg(not(unix))]
-    {
-        let mut permissions = file.metadata()?.permissions();
-        permissions.set_readonly(true);
-        file.set_permissions(permissions)?;
-    }
+    let _ = file; // Windows read-only bit set after unlinking staging alias.
     Ok(())
 }
 
