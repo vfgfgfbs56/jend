@@ -7,17 +7,20 @@ c94fa5434bdc1a0a69ce31e2dc8a402bb6f0c1788d6cf428edd91f4bee3663f5  SECURITY-ARCHI
 b2d2a3d0bb6b17a46af01b3c2dfbe9c52bffa5db19bc4fe4c2b7fb2626d240e5  client/jend-cli/Cargo.toml
 50779541e04402d9c3236aaa993db4fc63d00819cd5ed9e21cf8adc64162e6d3  client/jend-cli/src/bin/jend-hf-source-worker-live-smoke.rs
 180b88e032ed46059d9f5c2bb36ec52fb955012dc3daa71deeec5ce4f5116792  client/jend-cli/src/bin/jend-hf-xet-decode-live-smoke.rs
+53f2e2845b68daaecbe5a0eddc2ea8103659bc3ecd3550761b83a32fd0667150  client/jend-cli/src/bin/jend-hf-xet-multipart-live-smoke.rs
 f887c18f25b7ac72f8f71cb0ad878cdb198689c61ab2a2507ac1322977d93f8d  client/jend-cli/src/bin/jend-hf-xet-reconstruction-live-smoke.rs
 591cd8f6274c17dc7f5d5e73c735a175446b6fafcabbd541d2c2995ebf438418  client/jend-cli/src/bin/jend-hf-xet-single-range-live-smoke.rs
 547f473cbd716001305f611d9eaec9fe116ea5c25d77bf3c7221f81ec6723855  client/jend-cli/src/bin/jend-source-worker-transport-policy-smoke.rs
 97de3406a36df22916179a4ea73271159b5f22d941cb50e7f2b792f0d26b4860  client/jend-cli/src/bin/jend-xet-fetch-schedule-smoke.rs
 51e427fcf2dc2ff297ff6137922be040b04d571deced28e94bad6e5c33f485b4  client/jend-cli/src/bin/jend-xet-metadata-smoke.rs
+20c386a163aadab2ef0fae5f4399c8b3c92ec4cf5c9946839bf64dde5180e8be  client/jend-cli/src/bin/jend-xet-multipart-decode-smoke.rs
 89805742ed1bc4b5248b171b9fdf638650167e2e00fe946b59dc7b71153e8046  client/jend-cli/src/bin/jend-xet-single-range-plan-smoke.rs
 6d9e87c2c7c786550bab1638da0bdecb05c9e69de78ffc908a0cb0fb5d64553f  client/jend-cli/src/bin/jend-xet-xorb-decode-smoke.rs
 a466402853c55f2df1c09238c4656e24e29b5348dd23ade1efe7b4d76ee87d4f  client/jend-cli/src/main.rs
 4cc8f9dc060b2eeb30d7303abab63b7f3675d36320eb662ed5a171caf675a923  client/jend-cli/src/source_worker_transport.rs
 95f914b36479de50ef9ed9b8fdd048ab036a55fa4aeed8247d3e6c88637f68f7  client/jend-cli/src/xet_fetch_schedule.rs
 edad904e7138b47d41aa0a13433f2635531d1dc47cd79021f45a3493127f470a  client/jend-cli/src/xet_metadata.rs
+25222762cfde4a47114ccfc5417e686b4bb6f68ee54718644d9e2495339713cd  client/jend-cli/src/xet_multi_decode.rs
 3263bdc46a60097478ddbd6b431f42602781a0fb32fe567238eaea887895674c  client/jend-cli/src/xet_multi_fetch_transport.rs
 53b1a9b69ad8c7357b943a1ecd0480642ab4b5360246e3123f7c4df015b17dce  client/jend-cli/src/xet_multipart.rs
 7b9d91ec00ebdcd2043d421f223e538cf818c6d2b4ab92e73ad957a1663f164f  client/jend-cli/src/xorb_decode.rs
@@ -207,6 +210,7 @@ a7627b63d77c1d2e162bae1b47173facb79178e75626379d8452b3ee5cee2506  docs/M8.4-HF-X
 71736fbc7893445598427d42a5dbf8b7798d778d83575a5a20bc193029020541  docs/M8.5.0-SOURCE-WORKER-GATE.md
 5965557032ac8edb3fd863d5ea249a5fc363ec364bcf3e1452e0859c5c50f1ff  docs/M8.5.1-PINNED-HF-TRANSPORT.md
 b435256cee445017b245e1a787371ad8485a18554718986bb6f2d873db3ae126  docs/M8.5.10-ATOMIC-SIGNED-XET-MULTIRANGE-TRANSPORT.md
+d38f75fc44657402bbf9aafe2c3de0d6967ffaefd1dda84183e1c901621e74cd  docs/M8.5.11-BOUNDED-MULTIPART-DECODE-LIVE-PROBE.md
 fbafe009c2702dc2fbbb2f6af2f5d7902fe644a671abb5f8a58e4510e6cdf6a1  docs/M8.5.2-XET-METADATA.md
 662881a33bc2fc9568b20cfb0abd47ddc9e1c26a780d1ecfd5fdfb7051827a2d  docs/M8.5.2.1-XET-METADATA-SMOKE-CLEANUP.md
 e580b675001d6b73ede7d3f99bbcf46ef4c367ce71cd945750162cee282b9a16  docs/M8.5.2.2-XET-SCHEMA-CORRECTION.md
@@ -239,6 +243,7 @@ cec0467b3f25ac1b678926d0511de783b75ccadc404d57d82cfbad9217f64a46  scripts/dev-go
 c77cd607edb725a031a38495b96af4494c652a1ff00f693f98cf63ddf8418244  scripts/dev-hf-source-worker-live-smoke.sh
 7f6faf1ae3fa9571afa36f3e610606f5637f1013ef0fa02202b09b98f0153373  scripts/dev-hf-xet-adapter-smoke.sh
 ecd54b832e3c63ba3a4409799392ab4fbfc93cdaac9a25d81ee0851bc77e6dce  scripts/dev-hf-xet-decode-live-smoke.sh
+b516b5c7b4cefb74658ec62c48f51815b0f7a0007ae678bdbdd1303942f06831  scripts/dev-hf-xet-multipart-live-smoke.sh
 a600153515872394b143a57b9a6052f94d6f2ae88555433a718ec6251ff544e6  scripts/dev-hf-xet-reconstruction-live-smoke.sh
 c1c3306db8ffbfd9b132a444386352a9360d9599864f8c810c7b4558823edbd7  scripts/dev-hf-xet-single-range-live-smoke.sh
 c7a46f70ebac4adada50b381f063855f140e907d366709d345ab33a5dba56e19  scripts/dev-model-access-smoke.sh
@@ -257,6 +262,7 @@ db161b8fad1174ac2e41626056b6855a11f089a23123d8479d27ba9894de069b  scripts/dev-we
 72b2420710956bd8000ef552513fec6ff3bec176c32f8191430334c2821666c7  scripts/dev-weightvm-smoke.sh
 2073301ad06035db762be47cdb5f809a7153511c6408af0e628fa65d2dbd0958  scripts/dev-xet-fetch-schedule-smoke.sh
 637a62ae6645deb466b14b770143edd5a8cfb647c33871de1af7440a5d42ebe6  scripts/dev-xet-metadata-smoke.sh
+b09e685001be25b077e8c462f8ced8d3b4a22d3f8114e7d26ce496829ed9b104  scripts/dev-xet-multipart-decode-smoke.sh
 8aa30fe76e10bae139b8e1958acd5eec09b33a615b4d87bf10515f4482c158c3  scripts/dev-xet-single-range-plan-smoke.sh
 90488c3667566d47fc4aee8b6bfed585e747b4d86c4c4ddace6a9d7098adc60a  scripts/dev-xet-xorb-decode-smoke.sh
 dc5215348263caaa250f8cdb3683e8b66e0c35503513044f21d8a7ff21cb150c  scripts/dev-zero-install-smoke.sh
@@ -264,7 +270,7 @@ dc5215348263caaa250f8cdb3683e8b66e0c35503513044f21d8a7ff21cb150c  scripts/dev-ze
 c2b4aad8d07dcb967e17272e91b22fac85ceba0c3a8d7bc4a3c1333a5dd85392  scripts/first-test-ladder.sh
 06ea4b1d532ff5bd5a496b5848ac3115a41cd6222f61a43c8ed093d99411de8c  scripts/prepare-m8.5.5-lock.sh
 e5d5fdb3785861588b1cc5afbc9b2d1d93c0842040459fcfe10a5b73b2377516  scripts/prepare-m8.5.6-lock.sh
-b509837403e2d59f575290c40fde1ab0c575188e516a7591c4e19baf06051fb1  scripts/static-preflight.py
+37104fda09d12c5759ba4902309089bc6ac61cdee70fe26eb57ac01acb22d27c  scripts/static-preflight.py
 7ce62098240abb951ec78be8ce202e3e2165dc929e917d09784dde54bcc0770c  scripts/verify-manifest.py
 e9ef375964e97cb2fa49cb886aad18e2a570ccc81b7e61fb055502329916be03  security/processes.toml
 e36b954a737bdc163a6fedd770346bdfd4f63e05b5f75b329e866af437568f2a  server/jend-gateway/Cargo.toml
