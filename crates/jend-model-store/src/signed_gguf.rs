@@ -9,7 +9,7 @@
 //! No network, no executable model scripts, no WeightVM bypass.
 
 use std::{
-    fs,
+    fs::{self, File},
     io::{Read, Seek, SeekFrom},
     path::Path,
 };
@@ -54,6 +54,38 @@ pub fn inspect_independently_signed_gguf(
     path: &Path,
     max_allowed_file_bytes: u64,
 ) -> Result<VerifiedGgufInspection> {
+    // Existing path-facing inspection remains deliberately inspection-only.
+    // Even a symlink swapped after lstat cannot forge release-signed bytes;
+    // downstream native code must NEVER reopen this pathname after inspection.
+    trusted_key.verify(signed)?;
+    if !path.is_absolute() {
+        return Err(ModelStoreError::InvalidManifest);
+    }
+    let initial = fs::symlink_metadata(path)?;
+    if !initial.file_type().is_file() || initial.file_type().is_symlink() {
+        return Err(ModelStoreError::InvalidManifest);
+    }
+    let mut file = File::open(path)?;
+    let opened = file.metadata()?;
+    if !opened.is_file() || opened.len() != initial.len() {
+        return Err(ModelStoreError::InvalidManifest);
+    }
+    inspect_independently_signed_gguf_open_file(
+        trusted_key, signed, &mut file, max_allowed_file_bytes,
+    )
+}
+
+/// Inspect the exact already-open file description (not a reopened pathname).
+/// Internal to the Rust model-store: a validated descriptor is not itself
+/// immutable against writes to the same inode nor authority to start C++.
+/// This reuses the SAME header and per-chunk/whole signed hash checks as the
+/// legacy path-based inspector. It seeks to offset zero before verification.
+pub(crate) fn inspect_independently_signed_gguf_open_file(
+    trusted_key: &ModelReleasePublicKey,
+    signed: &SignedModelManifest,
+    file: &mut File,
+    max_allowed_file_bytes: u64,
+) -> Result<VerifiedGgufInspection> {
     trusted_key.verify(signed)?;
     let m = &signed.manifest;
     if m.format != "gguf"
@@ -64,23 +96,14 @@ pub fn inspect_independently_signed_gguf(
         || max_allowed_file_bytes > MAX_GGUF_INPUT_BYTES
         || m.total_plaintext_len < GGUF_HEADER_BYTES as u64
         || m.total_plaintext_len > max_allowed_file_bytes
-        || !path.is_absolute()
     {
         return Err(ModelStoreError::InvalidManifest);
     }
-
-    let initial = fs::symlink_metadata(path)?;
-    if !initial.file_type().is_file() || initial.file_type().is_symlink()
-        || initial.len() != m.total_plaintext_len
-    {
+    let meta = file.metadata()?;
+    if !meta.is_file() || meta.len() != m.total_plaintext_len {
         return Err(ModelStoreError::InvalidManifest);
     }
-    let mut file = fs::File::open(path)?;
-    let opened = file.metadata()?;
-    if !opened.is_file() || opened.len() != initial.len() {
-        return Err(ModelStoreError::InvalidManifest);
-    }
-
+    file.seek(SeekFrom::Start(0))?;
     let mut header = [0u8; GGUF_HEADER_BYTES];
     file.read_exact(&mut header)?;
     if &header[0..4] != b"GGUF" {
@@ -141,6 +164,7 @@ pub fn inspect_independently_signed_gguf(
         metadata_count,
     })
 }
+
 
 #[cfg(test)]
 mod tests {
