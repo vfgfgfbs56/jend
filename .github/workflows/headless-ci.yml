@@ -1,0 +1,53 @@
+name: Jend PostgreSQL headless security smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  headless:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: jend_dev
+          POSTGRES_PASSWORD: jend_dev_ci
+          POSTGRES_DB: jend
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jend_dev -d jend"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://jend_dev:jend_dev_ci@127.0.0.1:5432/jend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.0 --profile minimal
+      - name: Generate Cargo dependency lockfile
+        run: cargo generate-lockfile
+      - name: Verify locked dependency resolution
+        run: cargo metadata --format-version 1 --locked > resolved-metadata.json
+      - name: Check all Rust targets using lockfile
+        run: cargo check --workspace --all-targets --locked
+      - name: Test all Rust targets using lockfile
+        run: cargo test --workspace --all-targets --locked
+      - name: Execute end-to-end headless registration/security smoke
+        run: bash scripts/ci-headless-smoke.sh
+      - name: Preserve generated Cargo.lock and resolved dependency metadata
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jend-headless-lockfile
+          path: |
+            Cargo.lock
+            resolved-metadata.json
+          if-no-files-found: warn

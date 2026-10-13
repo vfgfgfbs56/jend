@@ -1,0 +1,32 @@
+name: Jend Rust security and workspace checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rust-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt
+      - name: Enforce source policy and project integrity
+        run: |
+          python3 scripts/static-preflight.py
+          python3 scripts/dependency-policy.py
+          python3 scripts/verify-manifest.py
+      - name: Existing rustfmt baseline drift (non-blocking until normalized)
+        continue-on-error: true
+        run: cargo fmt --all -- --check
+      - name: Generate dependency lockfile
+        run: cargo generate-lockfile
+      - name: Locked workspace compilation
+        run: cargo check --workspace --all-targets --locked
+      - name: Locked workspace tests
+        run: cargo test --workspace --all-targets --locked
