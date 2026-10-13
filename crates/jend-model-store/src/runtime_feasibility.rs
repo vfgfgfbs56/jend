@@ -12,7 +12,7 @@ const HARD_MAX_RAM: u64 = 4 * 1024 * 1024 * 1024 * 1024;
 const HARD_MAX_DISK: u64 = 64 * 1024 * 1024 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ArtifactFormat {
+pub enum RuntimeArtifactFormat {
     Gguf,
     Onnx,
     Safetensors,
@@ -43,7 +43,7 @@ pub enum WeightComputeTopology {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct VariantResourceEstimate {
-    pub format: ArtifactFormat,
+    pub format: RuntimeArtifactFormat,
     pub engine: NativeEngine,
     pub topology: WeightComputeTopology,
     /// Physical size of verified packed tensors expected to stay resident.
@@ -95,7 +95,7 @@ pub fn estimate_local_feasibility(
     variant: VariantResourceEstimate,
     device: DeviceResourceEstimate,
 ) -> LocalFeasibility {
-    use ArtifactFormat::*;
+    use RuntimeArtifactFormat::*;
     use DeviceCompute::*;
     use LocalFeasibility::*;
     use NativeEngine::*;
@@ -169,7 +169,7 @@ mod tests {
 
     fn dense() -> VariantResourceEstimate {
         VariantResourceEstimate {
-            format: ArtifactFormat::Gguf,
+            format: RuntimeArtifactFormat::Gguf,
             engine: NativeEngine::LlamaCppCpu,
             topology: WeightComputeTopology::Dense,
             weight_bytes: 3 * GIB,
@@ -215,7 +215,7 @@ mod tests {
     #[test]
     fn incompatible_onnx_gguf_backend_pair_rejected() {
         let variant = VariantResourceEstimate {
-            format: ArtifactFormat::Onnx, ..dense()
+            format: RuntimeArtifactFormat::Onnx, ..dense()
         };
         let device = DeviceResourceEstimate {
             free_physical_ram_bytes: 8 * GIB, ..weak_device()
@@ -229,7 +229,7 @@ mod tests {
     #[test]
     fn safetensors_needs_architecture_specific_adapter() {
         let variant = VariantResourceEstimate {
-            format: ArtifactFormat::Safetensors,
+            format: RuntimeArtifactFormat::Safetensors,
             ..dense()
         };
         assert_eq!(
