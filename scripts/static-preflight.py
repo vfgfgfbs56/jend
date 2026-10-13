@@ -1735,4 +1735,41 @@ require(
     "M8.5.15.2 mobile build-only caveat must be explicit",
 )
 
+# M8.5.15.3 complete signed GGUF check reuses existing Jend release
+# verification. Inspection is NOT native worker authority.
+signed_gguf_source = read("crates/jend-model-store/src/signed_gguf.rs")
+signed_gguf_smoke = read("crates/jend-model-store/src/bin/jend-signed-gguf-intake-smoke.rs")
+signed_gguf_docs = read("docs/M8.5.15.3-SIGNED-GGUF-WHOLE-INPUT.md")
+for required in [
+    "inspect_independently_signed_gguf",
+    "trusted_key.verify(signed)?",
+    "m.format != \"gguf\"",
+    "ChunkVerifier::new(chunk)",
+    "WholeModelVerifier::new(m)",
+    "MAX_GGUF_INPUT_BYTES",
+    "const IO_BUFFER_BYTES: usize = 64 * 1024",
+    "symlink_metadata(path)",
+    "GGUF_VERSION",
+    "file.read(&mut extra)? != 0",
+    "VerifiedGgufInspection",
+]:
+    require(required in signed_gguf_source, f"M8.5.15.3 signed complete GGUF boundary missing: {required}")
+for required in [
+    "Jend independently signed GGUF whole-file inspection: PASS",
+    "Jend GGUF wrong release key and signed manifest refused: PASS",
+    "Jend GGUF corrupt and truncated file refused: PASS",
+    "Jend GGUF malformed header refused even when signed: PASS",
+    "Jend GGUF intake fixture grants no native execution: PASS",
+]:
+    require(required in signed_gguf_smoke, f"M8.5.15.3 signed GGUF test missing: {required}")
+require(
+    "not a real model" in signed_gguf_docs
+    and "This result cannot authorize execution" in signed_gguf_docs,
+    "M8.5.15.3 signature inspection must not be marketed as native runnable",
+)
+require(
+    (ROOT / "scripts/dev-signed-gguf-intake-smoke.sh").is_file(),
+    "M8.5.15.3 offline signed GGUF smoke script missing",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")

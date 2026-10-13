@@ -1,4 +1,4 @@
-945ee8b8444f48946e3d885869b988032ccd3463e9e6a1f483130ff1abb53f0b  .github/workflows/ci.yml
+c13d90b7a4ebdf6e158bfb9eb4128901f3959d378aa0b740180a049fd84fd41d  .github/workflows/ci.yml
 8704b3eca44469396b9d19ae0718397fb08508194dd1af4aba9c707eb9230f6c  .github/workflows/headless-ci.yml
 efa55ca0f160c3cb5142400d32613e985f25b0bfbdc4434465e9f5f76ac205f9  .github/workflows/native-ipc-portability.yml
 e08ab01f51f5c118ac010bdcb8376981ebf86deaa497f2bf1c470a54595ff5eb  .gitignore
@@ -75,6 +75,7 @@ ad21dceb30b82e477b54e3dfb01ad30540e52254b1eafee5cacba1aaa4781251  crates/jend-mo
 99a0a7f4b04c106b0ee56830baa1b8b1d00a7af08f1706aac7f6bbc8fb1add83  crates/jend-model-store/src/bin/jend-model-ingest-smoke.rs
 eb1b2af93861f7a8e2392aa90ceae0381c955663dbcccd3f47b5a1e23ed4eeb3  crates/jend-model-store/src/bin/jend-native-blueprint-smoke.rs
 42557cbd7f1c86d428fc796e2173b2ebf900590e9d0eea06afdc461a6449ba40  crates/jend-model-store/src/bin/jend-runtime-feasibility-smoke.rs
+24c8ac3443ae9f49f7fac2d86b2b7d6ab68f02702b4f7b1938e86d18c768a0b4  crates/jend-model-store/src/bin/jend-signed-gguf-intake-smoke.rs
 034c50a5a56e458f6356b8e5058c85316fbbe8fbf21c41c22fd02e33c9f718cc  crates/jend-model-store/src/bin/jend-source-protocol-smoke.rs
 e792249b00a58115eabd0ea4665ee01e24e3583de33578deac0eca1fda25f7ff  crates/jend-model-store/src/bin/jend-source-worker-gate-smoke.rs
 07f7536a76a753652a2774c6b6783417da5550a7aaa005f40b81e3cbc273ff07  crates/jend-model-store/src/bin/jend-verified-page-ingest-smoke.rs
@@ -91,13 +92,14 @@ da0ba295c346409926acfde4d409f54ebb488c45f3a6f187b74ccbeb38f60103  crates/jend-mo
 84307ae5e31e45a33b7c28a66e5a5cff3b780ec8ac0d3993f9c4fa03e69c172d  crates/jend-model-store/src/hf_xet.rs
 8009b18e29c0c3a9a945aae8fb0f3e2147576605e436d537e67f340f0d9b2902  crates/jend-model-store/src/ids.rs
 234ca92f6e0e6256448703eed2ad1bc3857285e00a3b08c85c33acc04550092a  crates/jend-model-store/src/installer.rs
-aa433f8b346f68d33f20da60e40e9235032cd5b5472ed67bd7580c84d899e81a  crates/jend-model-store/src/lib.rs
+2ce3da6e50ddff4335d8d0c69917887579f86bd0419b48348b9db42933f966a1  crates/jend-model-store/src/lib.rs
 471a229cdd5885e6968e8b19987900838b0c300b6f139fc01d0d1029eeac19db  crates/jend-model-store/src/manifest.rs
 03732b71f19ab5614b43563a9e180b2f67bbf581728bdd7d574d822a7071d2d9  crates/jend-model-store/src/native.rs
 f3ced45eea20d72d738c2c7f659f01911eb8c472a29eabeb1bdcb988da2d285c  crates/jend-model-store/src/prototype.rs
 bd90d3ec93ad453d22e2b5dd2498316e78ab16d5ae5e2559d32893673b4fcb26  crates/jend-model-store/src/release.rs
 cf7f745a6ffe1d21bbf036b012bb819d0c591a96652ca78eb12f0364657ba654  crates/jend-model-store/src/runtime_feasibility.rs
 61932d549bf7de7a9967d45fe5455ab497b48a0f1c12282212ee7d4b5b621180  crates/jend-model-store/src/safety.rs
+d96c2fa5074f0fa04d890b80e5dc7b6d90b0d620a486e32f7be8b6f05fdfb9f8  crates/jend-model-store/src/signed_gguf.rs
 3f24ab2512130e635b31ca875f3527ac99852ade3ff45243f76e1c257db95434  crates/jend-model-store/src/source.rs
 d7db010196ea63d9c4265a8eb37e94c6c8999bfceebda7da434824f2c52715c0  crates/jend-model-store/src/source_protocol.rs
 dd5dd15d05e607f2f726f92584fcef134a332ced03ae6091ace61f8ffd4d33b4  crates/jend-model-store/src/source_worker.rs
@@ -227,6 +229,7 @@ c06c6f148e0315f5c172af9549aa1c2429184cbaf9ebcb1c8ba009f541cb74ae  docs/M8.5.13-S
 d396444fad93704da74ac47615eb7146fa0f6cc70493e508f21fa6796aebfe52  docs/M8.5.15-PINNED-GGUF-CPU-WORKER-PROOF.md
 e73fc924f3dc2bd6297fe1e708edb756b3c0621bade9272b55608a0da65a7888  docs/M8.5.15.1-RUST-NATIVE-WORKER-SUPERVISOR.md
 218b7f9df4e321821ec6d391867f3c48692fb739c4f49aa76f478b5e17f352e9  docs/M8.5.15.2-CROSS-DEVICE-NATIVE-PROTOCOL.md
+96b97ca3e015cc7554781a28fdf9f4c6ae555b7b95df0bc7ef2013b26754b447  docs/M8.5.15.3-SIGNED-GGUF-WHOLE-INPUT.md
 fbafe009c2702dc2fbbb2f6af2f5d7902fe644a671abb5f8a58e4510e6cdf6a1  docs/M8.5.2-XET-METADATA.md
 662881a33bc2fc9568b20cfb0abd47ddc9e1c26a780d1ecfd5fdfb7051827a2d  docs/M8.5.2.1-XET-METADATA-SMOKE-CLEANUP.md
 e580b675001d6b73ede7d3f99bbcf46ef4c367ce71cd945750162cee282b9a16  docs/M8.5.2.2-XET-SCHEMA-CORRECTION.md
@@ -274,6 +277,7 @@ e2eebd08d398803c4089bf481f5362c95aa8877d0563118a13d83d4a4f76fa99  scripts/dev-na
 0ba9f710167b89443f984bb291a128cfd5c2d305eaba7a10a4c9615bc3516f08  scripts/dev-provider-boundary-smoke.sh
 256ab6e56bd87e3e1dfa7857a86832d5fda25b918a8956bce23ecb867a3f3dfb  scripts/dev-runtime-feasibility-smoke.sh
 fe5a696bbf30950268c31c317b6036f90d44dd79ecaef1c623f9554349e6daa5  scripts/dev-runtime-smoke.sh
+ae6dba5ecf21201cc3718e6ba665ccb5f6fcbba49fdf1491728278febc397007  scripts/dev-signed-gguf-intake-smoke.sh
 a8755d1e9aff0531afb48fd6d2c8e9445ba9fc40a14eafa024230e7ebbab94ec  scripts/dev-source-protocol-smoke.sh
 c413e75f4d6b8a023674149d6ca7ce9b4b79538e1fae5d728491c02980adb0a8  scripts/dev-source-worker-gate-smoke.sh
 18c6befb8d535e8e98de1ff1bc0093e41e60b257e82d1eac189e6ad03eb4fdba  scripts/dev-source-worker-transport-smoke.sh
@@ -295,7 +299,7 @@ dc5215348263caaa250f8cdb3683e8b66e0c35503513044f21d8a7ff21cb150c  scripts/dev-ze
 c2b4aad8d07dcb967e17272e91b22fac85ceba0c3a8d7bc4a3c1333a5dd85392  scripts/first-test-ladder.sh
 06ea4b1d532ff5bd5a496b5848ac3115a41cd6222f61a43c8ed093d99411de8c  scripts/prepare-m8.5.5-lock.sh
 e5d5fdb3785861588b1cc5afbc9b2d1d93c0842040459fcfe10a5b73b2377516  scripts/prepare-m8.5.6-lock.sh
-61ab9cb3674a631c8d173f05989671c5921e0badc9c66ea4daa18fec55fe7305  scripts/static-preflight.py
+49a9894425208d26067cf26b970c030c3f20e66459bee46ff785d218468bd76e  scripts/static-preflight.py
 7ce62098240abb951ec78be8ce202e3e2165dc929e917d09784dde54bcc0770c  scripts/verify-manifest.py
 e9ef375964e97cb2fa49cb886aad18e2a570ccc81b7e61fb055502329916be03  security/processes.toml
 e36b954a737bdc163a6fedd770346bdfd4f63e05b5f75b329e866af437568f2a  server/jend-gateway/Cargo.toml

@@ -38,3 +38,5 @@ jobs:
         run: bash scripts/dev-native-gguf-worker-protocol-smoke.sh
       - name: Verify Rust-to-C++ native supervisor and strict one-shot framing
         run: bash scripts/dev-native-gguf-rust-supervisor-smoke.sh
+      - name: Prove independently release-signed GGUF whole-file intake and reject corrupt bytes
+        run: bash scripts/dev-signed-gguf-intake-smoke.sh
