@@ -105,7 +105,7 @@ pub use source_worker::{
 };
 
 pub use runtime_feasibility::{
-    ArtifactFormat, NativeEngine, DeviceCompute, WeightComputeTopology,
+    RuntimeArtifactFormat, NativeEngine, DeviceCompute, WeightComputeTopology,
     VariantResourceEstimate, DeviceResourceEstimate, LocalFeasibility,
     estimate_local_feasibility,
 };
