@@ -71,7 +71,7 @@ cfb78097bbe4831742b71c62220bc05542b634932f2eb56671d4e82ebefb5058  crates/jend-mo
 ad21dceb30b82e477b54e3dfb01ad30540e52254b1eafee5cacba1aaa4781251  crates/jend-model-store/src/bin/jend-model-access-smoke.rs
 99a0a7f4b04c106b0ee56830baa1b8b1d00a7af08f1706aac7f6bbc8fb1add83  crates/jend-model-store/src/bin/jend-model-ingest-smoke.rs
 eb1b2af93861f7a8e2392aa90ceae0381c955663dbcccd3f47b5a1e23ed4eeb3  crates/jend-model-store/src/bin/jend-native-blueprint-smoke.rs
-879047db42af69831be2fc4070c53bc77c90051158c40518c5c206dce2a1dac4  crates/jend-model-store/src/bin/jend-runtime-feasibility-smoke.rs
+42557cbd7f1c86d428fc796e2173b2ebf900590e9d0eea06afdc461a6449ba40  crates/jend-model-store/src/bin/jend-runtime-feasibility-smoke.rs
 034c50a5a56e458f6356b8e5058c85316fbbe8fbf21c41c22fd02e33c9f718cc  crates/jend-model-store/src/bin/jend-source-protocol-smoke.rs
 e792249b00a58115eabd0ea4665ee01e24e3583de33578deac0eca1fda25f7ff  crates/jend-model-store/src/bin/jend-source-worker-gate-smoke.rs
 07f7536a76a753652a2774c6b6783417da5550a7aaa005f40b81e3cbc273ff07  crates/jend-model-store/src/bin/jend-verified-page-ingest-smoke.rs
@@ -88,12 +88,12 @@ da0ba295c346409926acfde4d409f54ebb488c45f3a6f187b74ccbeb38f60103  crates/jend-mo
 84307ae5e31e45a33b7c28a66e5a5cff3b780ec8ac0d3993f9c4fa03e69c172d  crates/jend-model-store/src/hf_xet.rs
 8009b18e29c0c3a9a945aae8fb0f3e2147576605e436d537e67f340f0d9b2902  crates/jend-model-store/src/ids.rs
 234ca92f6e0e6256448703eed2ad1bc3857285e00a3b08c85c33acc04550092a  crates/jend-model-store/src/installer.rs
-b03a180d71f55dd4b232b078106998246f74dc46ab791d1b1caefda000922ed8  crates/jend-model-store/src/lib.rs
+aa433f8b346f68d33f20da60e40e9235032cd5b5472ed67bd7580c84d899e81a  crates/jend-model-store/src/lib.rs
 471a229cdd5885e6968e8b19987900838b0c300b6f139fc01d0d1029eeac19db  crates/jend-model-store/src/manifest.rs
 03732b71f19ab5614b43563a9e180b2f67bbf581728bdd7d574d822a7071d2d9  crates/jend-model-store/src/native.rs
 f3ced45eea20d72d738c2c7f659f01911eb8c472a29eabeb1bdcb988da2d285c  crates/jend-model-store/src/prototype.rs
 bd90d3ec93ad453d22e2b5dd2498316e78ab16d5ae5e2559d32893673b4fcb26  crates/jend-model-store/src/release.rs
-04605b602f3adc9db3943f031c2f72d8ff0e7ecff1807ecce61c5e00ae34063f  crates/jend-model-store/src/runtime_feasibility.rs
+cf7f745a6ffe1d21bbf036b012bb819d0c591a96652ca78eb12f0364657ba654  crates/jend-model-store/src/runtime_feasibility.rs
 61932d549bf7de7a9967d45fe5455ab497b48a0f1c12282212ee7d4b5b621180  crates/jend-model-store/src/safety.rs
 3f24ab2512130e635b31ca875f3527ac99852ade3ff45243f76e1c257db95434  crates/jend-model-store/src/source.rs
 d7db010196ea63d9c4265a8eb37e94c6c8999bfceebda7da434824f2c52715c0  crates/jend-model-store/src/source_protocol.rs
