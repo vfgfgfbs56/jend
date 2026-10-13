@@ -36,3 +36,5 @@ jobs:
         run: bash scripts/dev-runtime-feasibility-smoke.sh
       - name: Verify pinned native GGUF worker protocol without model or llama dependency
         run: bash scripts/dev-native-gguf-worker-protocol-smoke.sh
+      - name: Verify Rust-to-C++ native supervisor and strict one-shot framing
+        run: bash scripts/dev-native-gguf-rust-supervisor-smoke.sh
