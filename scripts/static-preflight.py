@@ -1660,4 +1660,43 @@ require(
     "M8.5.15 must preserve model-store network isolation",
 )
 
+# M8.5.15.1 Rust/native worker wire boundary remains model-free.
+native_parent = read("client/jend-cli/src/native_gguf_ipc.rs")
+native_parent_smoke = read("client/jend-cli/src/bin/jend-native-gguf-ipc-smoke.rs")
+native_script = read("scripts/dev-native-gguf-rust-supervisor-smoke.sh")
+native_cpp = read("native/jend-gguf-worker/worker.cpp")
+for required in [
+    'const MAGIC: &[u8; 9] = b"JENDGGUF1"',
+    'MAX_STDOUT',
+    'MAX_PROMPT: usize = 4096',
+    'MAX_TOKENS: usize = 16',
+    'run_protocol_only_worker',
+    '.arg("--protocol-smoke")',
+    '.env_clear()',
+    '.stderr(Stdio::null())',
+    'DeadlineExceeded',
+    'ReapOnExit',
+    'parse_native_response',
+    'InvalidWorkerProtocol',
+]:
+    require(required in native_parent, f"M8.5.15.1 Rust worker IPC safety gate missing: {required}")
+for required in [
+    "Jend Rust supervised C++ worker handshake: PASS",
+    "Jend Rust invalid deadline and executable path rejected: PASS",
+    "Jend native worker supervisor remains model-free and dev-only: PASS",
+]:
+    require(required in native_parent_smoke, f"M8.5.15.1 native supervisor smoke absent: {required}")
+require(
+    'JEND_BUILD_EXPERIMENTAL_LLAMA=OFF' in native_script,
+    "M8.5.15.1 must never pull models or llama.cpp in protocol CI",
+)
+require(
+    "std::cin.peek() == std::char_traits<char>::eof()" in native_cpp,
+    "M8.5.15.1 C++ one-shot native frame must require EOF",
+)
+require(
+    (ROOT / "docs/M8.5.15.1-RUST-NATIVE-WORKER-SUPERVISOR.md").is_file(),
+    "M8.5.15.1 must document lack of an OS sandbox",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")
