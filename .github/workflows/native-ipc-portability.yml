@@ -30,6 +30,8 @@ jobs:
           python-version: '3.12'
       - name: Compile native worker and run cross-OS Rust/C++ protocol smoke
         run: python scripts/dev-native-gguf-cross-platform-smoke.py
+      - name: Enforce Linux seccomp or deny unsupported host sandbox claim
+        run: python scripts/dev-native-linux-seccomp-probe.py
 
   mobile-parser-compile:
     name: Mobile Rust parser compile / Android + iOS ARM64
