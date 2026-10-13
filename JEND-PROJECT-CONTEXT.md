@@ -1,14 +1,14 @@
 # JEND — PROJECT CONTEXT & ROADMAP (памятка для нового чата)
 
-> **Обновлено:** 2026-10-13. **Текущий этап:** M8.5.15.4.  
-> **Основная ветка разработки:** `feat/m8.5.15.4-verified-gguf-snapshot`, [PR #13](https://github.com/vfgfgfbs56/jend/pull/13).  
+> **Обновлено:** 2026-10-13. **Текущий этап:** M8.5.15.5 (в разработке); последний проверенный backend-этап M8.5.15.4.  
+> **Основная ветка разработки:** `feat/m8.5.15.5-pinned-gguf-file-handle`, новый stacked PR поверх [#13](https://github.com/vfgfgfbs56/jend/pull/13).  
 > **Статус:** прототипы проверки/хранения моделей и взаимодействия Rust/C++; **реальный безопасный инференс сторонней модели в Jend пока НЕ реализован**.  
 > **Важно:** этот файл — редактируемый снимок на момент коммита, не автоматически обновляемые сведения о GitHub. Перед новым действием перечитать его и **проверить актуальное состояние PR, веток и CI**.
 
 ## Как продолжать в новом чате (прочитать прежде, чем действовать)
 
 1. Открыть **именно этот файл из последней рабочей ветки**:
-   [JEND-PROJECT-CONTEXT.md — актуальная ветка](https://github.com/vfgfgfbs56/jend/blob/feat/m8.5.15.4-verified-gguf-snapshot/JEND-PROJECT-CONTEXT.md).
+   [JEND-PROJECT-CONTEXT.md — актуальная ветка](https://github.com/vfgfgfbs56/jend/blob/feat/m8.5.15.5-pinned-gguf-file-handle/JEND-PROJECT-CONTEXT.md).
    После слияния прочитать версию на `main`:
    `https://github.com/vfgfgfbs56/jend/blob/main/JEND-PROJECT-CONTEXT.md`.
 2. Проверить [открытые PR](https://github.com/vfgfgfbs56/jend/pulls), их **базы**, последние SHA, CI и отсутствие конфликтов. Не предполагать, что все ранее открытые PR уже слиты.
@@ -111,7 +111,8 @@ Jend GGUF snapshot grants no native execution capability: PASS
 | 9 | [#10](https://github.com/vfgfgfbs56/jend/pull/10) | M8.5.15.1 Rust IPC supervisor |
 | 10 | [#11](https://github.com/vfgfgfbs56/jend/pull/11) | M8.5.15.2 portability |
 | 11 | [#12](https://github.com/vfgfgfbs56/jend/pull/12) | M8.5.15.3 signed GGUF intake |
-| 12 | [#13](https://github.com/vfgfgfbs56/jend/pull/13) | M8.5.15.4 private verified snapshot — текущий верх |
+| 12 | [#13](https://github.com/vfgfgfbs56/jend/pull/13) | M8.5.15.4 private verified snapshot — предыдущий этап |
+| 13 | PR #14 (создаётся) | M8.5.15.5 same-open-handle signed GGUF rehash; ещё не immutable OS backing |
 
 ## 5. Очередь задач — последовательность и условия допуска
 
@@ -122,30 +123,41 @@ Jend GGUF snapshot grants no native execution capability: PASS
 - [ ] Сверить текущие PR CI, review, mergeability; не путать PR #13 с main.
 - [ ] Проверить fail-closed snapshot store под **Windows ACL**, непредвиденные права родителей, TOCTOU/cache poisoning, падения и конкуренцию, fuzz/path traversal.
 - [ ] Не включать нативную загрузку GGUF до прочного trust/sandbox gate.
+- [ ] M8.5.15.5: получить CI для pinned open-file lease и затем Mac PASS; тесты и код не предоставляют права запуска модели.
+- [ ] Backend & Security Ready gate: завершить отдельно после Architecture v1 freeze, перед основным frontend; детали в §6.
 
 ### СЛЕДУЮЩИЕ ИНЖЕНЕРНЫЕ ЭТАПЫ (план, названия предварительные)
-- **M8.5.15.5 — stable verified artifact handle:** достоверный read-only file descriptor / OS handle, повторная проверка именно этих байтов, защита от смены файла между проверкой и загрузкой; fail-closed на каждом OS. Android/iOS — отдельные mobile capability contracts.
+- **M8.5.15.5 — pinned open-file identity (в работе):** один открытый дескриптор с подписью/повторным хешем; Unix inode/dev check, отклонение pathname substitution, same-inode mutation rehash. **Не immutable**: OS-protected sealed backing + safe native handoff остаются в дальнейшем security gate; Windows ACL/handle sharing, Android/iOS отдельно.
 - **M8.5.15.6 — sandboxed attested native worker:** pinned/verified worker binary, OS sandbox без сети и доступа к E2EE, ограничения RAM/CPU/fds/времени, kill descendants, fuzz IPC и GGUF pre-parser.
 - **M8.5.15.7 — первый реальный GGUF CPU fixture:** законно полученная маленькая **сторонняя** модель, независимо опубликованный digest + проверенные лицензия и цепочка подписанного Jend release metadata; реальная локальная генерация, токены/s, first-token latency, peak RSS на ARM64 и x64, не использовать секреты.
 - **M8.5.16 — architecture v1 freeze + multi-model catalog:** утверждённый signed variant schema, versioned backend ABI, раздельные runtime adapters, 2+ существующие model families, multi-source WeightFabric/cache/mirror fallback (по лицензии), trust-root enrollment, rollback/revocation/update policy, ясный UI local/remote и требования ко всем целевым платформам. **Не заявлять поддержку формата без рабочего backend.**
-- **M8.6** — проверенная реальная execution/integration на поддерживаемых desktop OS, затем ускорение Apple Metal/Objective-C++, ARM NEON/Vulkan/CUDA и мобильные отдельные приложения; добавлять ONNX/safetensors-adapter по результатам совместимости, а не "поддерживаем всё".
+- **M8.6 — backend/security integration:** настоящий проверенный GGUF execution baseline, модельные lifecycle API, OS isolation, persisted release trust, multi-origin download quotas и отказоустойчивость, кроссплатформенные тесты. GPU/Metal/ONNX/мобильное расширение выполняются по приоритету, не должны искусственно блокировать базовый API-контракт.
+- **M8.7 — Backend & Security Ready (плановый checkpoint):** security review, интеграционные тесты и acceptance report; после этого начинаем основную реализацию frontend. Номер предварительный, календарной даты нет; незакрытый обязательный blocker = NO-GO.
 - **Позже** — opt-in P2P/public-weight sharing, BYOK/remote provider, availability/cost analysis, feature flags and audits.
 
-## 6. Когда архитектуру нужно закончить?
+## 6. Когда именно заканчиваем backend и переходим к frontend?
 
-**Целевая точка «Architecture v1 / design freeze» — НЕ ПОЗЖЕ ЗАВЕРШЕНИЯ M8.5.16, ДО начала расширения M8.6 на множество моделей, GPU и мобильные релизы.** Это **плановый gate**, а не обещание календарной даты: точная дата ещё не согласована и **не должна выдумываться**. Если gate не выполнен — оставаться на безопасном прототипе, не объявлять архитектуру законченной.
+**Уточнение цели от владельца проекта (2026-10-13):** «закончить разработку» означает **довести безопасность, backend и основные архитектурные механизмы до проверенной готовности, ЧТОБЫ ПЕРЕЙТИ К полноценной frontend-разработке**. НЕ означает закончить весь Jend, обучить свою модель или выпустить production-продукт.
 
-Критерии завершения **дизайна v1** (каждый пункт должен иметь ADR, тест, ревью/CI или явное `BLOCKED`):
-- [ ] Окончательно описаны доверенные корни, обновление/ротация ключей, отзыв, защита от rollback/freeze и подписи всех вариантов.
-- [ ] Единый signed model catalog/variant contract: лицензия, provenance, format, architecture, quantization, tokenizer, memory budget, device/backend compatibility.
-- [ ] Специфицированы и проверены immutable artifact handoff, source-worker и native worker OS-sandbox, отсутствие доступа к E2EE/сети.
-- [ ] Заданы адаптеры Windows, Linux, macOS, Android, iOS и их ограничения, отдельно CPU baseline и SIMD/GPU dispatch.
-- [ ] Спроектированы локальный verified CAS, multi-origin delivery, optional mirror/peer rules и эксплуатационный budget для миллиона пользователей; минимальный центральный storage без нереалистичного «0 bytes / 0 bandwidth».
-- [ ] Описаны единый model switch/chat UI, разрешения на инструменты/файлы, explicit remote/BYOK privacy + cost boundary.
-- [ ] Есть реальные end-to-end тесты не менее одной лицензированной внешней GGUF-модели с измерениями на ARM64/x64; все критические security gates проверены.
-- [ ] Разобрана цепочка PR и архитектурные решения задокументированы, нет невыполненных blockers в заявленной v1 scope.
+Нужно различать **три** рубежа:
 
-**«Архитектура зафиксирована» ≠ «продукт готов».** Production release разрешён только после реальных поддержанных модельных сценариев, независимого security review, мобильных/desktop OS тестов, настройки обновлений и эксплуатационных процедур.
+1. **Architecture v1 Design Freeze** — ориентир **M8.5.16**: принято решение о форматах подписанных моделей, протоколах, runtime adapter ABI, безопасной доставке, разрешениях, поддерживаемых OS и устройстве UI/API контрактов. *Дизайн зафиксирован, backend ещё не объявлен готовым.*
+2. **Backend & Security Ready (frontend start gate)** — отдельный checkpoint после реально работающих backend-потоков, закрытия обязательных security blockers и проверки интеграционных контрактов (предварительно M8.7 после интеграции M8.6). Только после его PASS начинаем **основную** реализацию frontend пользовательского сервиса. Ранние UX-макеты, прототипы и совместное проектирование API **разрешены раньше**.
+3. **Product Release** — после frontend, end-to-end пользовательских сценариев, полевых и мобильных тестов, эксплуатационной подготовки и независимого внешнего аудита по требованиям релиза. Не смешивать с backend gate.
+
+**Обязательные условия Backend & Security Ready** (каждое подтверждено тестом, ревью и ссылкой; незакрытый пункт блокирует переход):
+- [ ] Доверенные publisher/Jend-distributor root keys зарегистрированы независимо от источника байтов; подписи catalog/variant/model, key rotation, revocation, rollback/freeze защита и проверенный алгоритм обновлений.
+- [ ] Безопасная доставка signed pages/models и локальный verified CAS: source-worker без E2EE ключей, защита SSRF/redirect/grants, resume, immutable artifact identity, quotas/timeouts, crash recovery, cache poisoning & TOCTOU negative tests.
+- [ ] Настоящая licensed сторонняя GGUF-модель и tokenizer/config проверены независимо от сети и генерируют токены локально через **OS-sandboxed, binary-attested** CPU native engine; сеть запрещена, RAM/CPU/fd/timeout/cancel ограничены; нет произвольного загружаемого кода.
+- [ ] Backend API/IPC контракты для model list/install/status/cancel/delete/select/generate, модельных ресурсов, контекстов, прав на чаты/инструменты, ошибок и событий описаны, версионированы и покрыты контрактными тестами. Frontend может использовать тестовый backend/stub, не ломая безопасность.
+- [ ] Безопасность E2EE и vault на границе AI подтверждена: нет тихого remote inference, приватный plaintext не попадает в registry/logs/peers, действия AI требуют явных user capabilities, критические тесты и threat model актуальны.
+- [ ] Реальные интеграционные тесты на поддерживаемой минимальной desktop конфигурации (Linux, Windows, macOS x64/ARM64 — с честно указанным coverage); строгие compatibility и low-RAM ограничения; реальные измерения качества/latency/RSS; для неподдержанной platform отдельный отказ и путь расширения. Android/iOS не рекламировать как готовые до приложения, подписи и реальных device-tests.
+- [ ] Независимая security-review процедура для ключевых trust boundaries, dependency/worker pin, supply-chain, CI, отказоустойчивость, recovery/updates; high/critical findings устранены или release scope явно заблокирован.
+- [ ] Все предыдущие milestone PR пересмотрены, integration plan записан, безопасность подтверждена на том коде, с которым будет соединяться frontend.
+
+**НЕ должны блокировать ранний основной frontend для desktop v1, если не включены в v1:** собственная foundation model, собственный язык программирования, P2P, платный remote API, тысячи моделей, каждый GPU/ISA backend, все мобильные устройства сразу. Они могут поставляться позже как подписанные/версионированные дополнительные адаптеры. Но их **не включать и не рекламировать как готовые**, пока не реализованы и не протестированы.
+
+**Дата завершения пока не установлена.** Следующий PR должен показывать закрытые/открытые blockers и следующий gate, а не назначать необоснованный дедлайн. Перейти к frontend по факту доказанной готовности backend/security, а не по номеру M8.x или количеству PASS на синтетических файлах.
 
 ## 7. Как ОБЯЗАТЕЛЬНО поддерживать этот файл актуальным
 
