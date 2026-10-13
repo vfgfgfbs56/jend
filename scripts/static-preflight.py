@@ -1535,4 +1535,44 @@ require(
     "M8.5.12 must preserve network isolation in WeightVM",
 )
 
+# M8.5.13: an untrusted HF/Xet logical slice never becomes a trusted
+# WeightPage by choosing its own hash, key or signed map. Require existing
+# independently trusted release-signed SourceMap + VirtualMap gates.
+bridge_m8513 = read("client/jend-cli/src/verified_xet_page_bridge.rs")
+offline_m8513 = read("client/jend-cli/src/bin/jend-xet-signed-page-admission-smoke.rs")
+cli_m8513 = read("client/jend-cli/Cargo.toml")
+for required in [
+    "verify_source_read_request",
+    "ExpectedImmutableHfSource",
+    "UntrustedOrigin",
+    "UntrustedSourceOffset",
+    "reconstruct_slice_from_ranges",
+    "decode_untrusted_multipart_ranges",
+    "put_verified_source_page",
+    "trusted_release_key",
+]:
+    require(required in bridge_m8513, f"M8.5.13 signed trust bridge missing: {required}")
+for required in [
+    "Jend Xet release-signed source+virtual map admission: PASS",
+    "Jend Xet immutable HF source and offset binding: PASS",
+    "Jend Xet modified digest/length rejected before staging: PASS",
+    "Jend Xet untrusted signing key and maps rejected: PASS",
+    "Jend Xet durable signed WeightPage and WeightVM lease: PASS",
+    "Jend Xet page admission uses synthetic offline fixture only: PASS",
+]:
+    require(required in offline_m8513, f"M8.5.13 offline proof missing: {required}")
+require(
+    'jend-model-store = { path = "../../crates/jend-model-store" }' in cli_m8513,
+    "M8.5.13 must reuse existing verified model-store gate",
+)
+require(
+    (ROOT / "scripts/dev-xet-signed-page-admission-smoke.sh").is_file(),
+    "M8.5.13 Mac signed page smoke script missing",
+)
+require(
+    "reqwest" not in read("crates/jend-model-store/Cargo.toml")
+    and "tokio" not in read("crates/jend-model-store/Cargo.toml"),
+    "M8.5.13 must preserve WeightVM zero-network architecture",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")
