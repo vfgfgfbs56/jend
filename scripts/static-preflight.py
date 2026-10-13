@@ -1443,4 +1443,46 @@ require(
     "M8.5.10 unverified physical bytes cannot become WeightVM admission",
 )
 
+# M8.5.11: the live probe requires an explicit opt-in and may SKIP rather
+# than invent a multipart response. The decoded bytes are never published.
+live_m8511 = read("client/jend-cli/src/bin/jend-hf-xet-multipart-live-smoke.rs")
+decode_m8511 = read("client/jend-cli/src/xet_multi_decode.rs")
+offline_m8511 = read("client/jend-cli/src/bin/jend-xet-multipart-decode-smoke.rs")
+for required in [
+    "JEND_ALLOW_LIVE_HF_XET_MULTIPART",
+    "JEND_HF_TOKEN",
+    "execute_signed_xet_multi_range",
+    "build_fetch_schedule",
+    "decode_untrusted_multipart_ranges",
+    "reconstruct_slice_from_ranges",
+    "SKIP (no eligible single signed multi-range entry",
+    "Jend live Xet atomic multipart HTTP 206: PASS",
+    "Jend live Xet unverified bytes kept outside WeightVM: PASS",
+]:
+    require(required in live_m8511, f"M8.5.11 live probe boundary missing: {required}")
+for required in [
+    "HARD_MAX_PHYSICAL_BYTES",
+    "HARD_MAX_DECODED_BYTES",
+    "DuplicateChunkCoverage",
+    "decode_xorb_single_range",
+    "PhysicalBudgetExceeded",
+    "DecodedBudgetExceeded",
+]:
+    require(required in decode_m8511, f"M8.5.11 physical decode bounds missing: {required}")
+require(
+    "Jend Xet multipart physical-to-logical offline pipeline: PASS" in offline_m8511
+    and "Jend Xet decoded data kept outside WeightVM: PASS" in offline_m8511,
+    "M8.5.11 offline end-to-end boundary smoke missing",
+)
+require(
+    (ROOT / "scripts/dev-xet-multipart-decode-smoke.sh").is_file()
+    and (ROOT / "scripts/dev-hf-xet-multipart-live-smoke.sh").is_file(),
+    "M8.5.11 Mac smoke scripts missing",
+)
+require(
+    "reqwest" not in read("crates/jend-model-store/Cargo.toml")
+    and "tokio" not in read("crates/jend-model-store/Cargo.toml"),
+    "M8.5.11 must preserve model-store network isolation",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")
