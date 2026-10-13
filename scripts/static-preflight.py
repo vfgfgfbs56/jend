@@ -1699,4 +1699,40 @@ require(
     "M8.5.15.1 must document lack of an OS sandbox",
 )
 
+# M8.5.15.2: portable IPC is never conflated with mobile subprocess
+# support or real third-party model inference. Windows MSVC is not GCC.
+native_portability = read(".github/workflows/native-ipc-portability.yml")
+native_portability_script = read("scripts/dev-native-gguf-cross-platform-smoke.py")
+native_cmake_port = read("native/jend-gguf-worker/CMakeLists.txt")
+native_ipc_port = read("client/jend-cli/src/native_gguf_ipc.rs")
+native_port_docs = read("docs/M8.5.15.2-CROSS-DEVICE-NATIVE-PROTOCOL.md")
+for required in [
+    "windows-2025", "macos-15", "macos-15-intel",
+    "ubuntu-24.04", "ubuntu-24.04-arm",
+    "aarch64-linux-android", "aarch64-apple-ios",
+    "scripts/dev-native-gguf-cross-platform-smoke.py",
+]:
+    require(required in native_portability, f"M8.5.15.2 cross-device runner missing: {required}")
+for required in [
+    "/W4 /WX", "-Wall -Wextra -Werror",
+    "JEND_BUILD_EXPERIMENTAL_LLAMA",
+]:
+    require(required in native_cmake_port, f"M8.5.15.2 MSVC and portable C++ options missing: {required}")
+for required in [
+    'cfg!(any(target_os = "ios", target_os = "android"))',
+    'UnsupportedMobileProcessMode',
+]:
+    require(required in native_ipc_port, f"M8.5.15.2 mobile process fail-closed gate missing: {required}")
+for required in [
+    "PROTOCOL_ONLY", "JENDGGUF1N", "NO_MODEL",
+    "rustup", "rustc", "struct.pack",
+    "Jend portable Rust-to-C++ one-shot supervisor handshake: PASS",
+]:
+    require(required in native_portability_script, f"M8.5.15.2 portable IPC proof missing: {required}")
+require(
+    "Rust wire parser cross-compiles" in native_port_docs
+    and "does NOT link, run or sign" in native_port_docs,
+    "M8.5.15.2 mobile build-only caveat must be explicit",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")

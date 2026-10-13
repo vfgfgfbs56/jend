@@ -1,0 +1,53 @@
+name: Jend Native IPC portability matrix
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop-protocol:
+    name: Protocol-only native IPC / ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - macos-15
+          - macos-15-intel
+          - windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.0 --profile minimal
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile native worker and run cross-OS Rust/C++ protocol smoke
+        run: python scripts/dev-native-gguf-cross-platform-smoke.py
+
+  mobile-parser-compile:
+    name: Mobile Rust parser compile / Android + iOS ARM64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust and mobile standard libraries
+        run: |
+          rustup toolchain install 1.99.0 --profile minimal
+          rustup target add --toolchain 1.99.0 aarch64-linux-android aarch64-apple-ios
+      - name: Check standalone Rust wire parser on mobile targets without native runner
+        shell: bash
+        run: |
+          rustup run 1.99.0 rustc --edition=2024 --crate-type lib \
+            --emit metadata --target aarch64-linux-android \
+            client/jend-cli/src/native_gguf_ipc.rs -o "${RUNNER_TEMP}/jend-android-ipc.rmeta"
+          rustup run 1.99.0 rustc --edition=2024 --crate-type lib \
+            --emit metadata --target aarch64-apple-ios \
+            client/jend-cli/src/native_gguf_ipc.rs -o "${RUNNER_TEMP}/jend-ios-ipc.rmeta"
+          echo "Jend Android and iOS ARM64 Rust wire parser cross-compilation: PASS"

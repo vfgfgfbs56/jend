@@ -25,6 +25,7 @@ pub enum IpcError {
     InvalidPrompt,
     UntrustedWorkerPath,
     InvalidTimeout,
+    UnsupportedMobileProcessMode,
     SpawnOrPipe,
     DeadlineExceeded,
     WorkerFailed,
@@ -39,6 +40,7 @@ impl std::fmt::Display for IpcError {
             Self::InvalidPrompt => "native worker prompt rejected",
             Self::UntrustedWorkerPath => "native worker executable path rejected",
             Self::InvalidTimeout => "native worker deadline invalid",
+            Self::UnsupportedMobileProcessMode => "mobile native worker subprocess disabled",
             Self::SpawnOrPipe => "native worker spawn or IPC failed",
             Self::DeadlineExceeded => "native worker exceeded deadline",
             Self::WorkerFailed => "native worker returned failure",
@@ -133,6 +135,12 @@ pub fn run_protocol_only_worker(
     prompt: &str,
     timeout: Duration,
 ) -> Result<NativeResponse, IpcError> {
+    // iOS and Android cannot inherit the desktop worker process trust model.
+    // A signed in-app/mobile service adapter must be designed separately.
+    // cfg! is compile-time determined; a caller cannot override the denial.
+    if cfg!(any(target_os = "ios", target_os = "android")) {
+        return Err(IpcError::UnsupportedMobileProcessMode);
+    }
     if prompt.is_empty() || prompt.len() > MAX_PROMPT {
         return Err(IpcError::InvalidPrompt);
     }

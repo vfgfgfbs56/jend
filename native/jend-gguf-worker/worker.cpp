@@ -21,6 +21,11 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 #ifdef JEND_WITH_LLAMA
 #include "llama.h"
 #endif
@@ -156,6 +161,12 @@ int run_cpu(const std::string& path, const std::string& prompt) {
 }  // namespace
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+    // Native Windows CRT defaults to text mode. CRLF / 0x1A conversion
+    // would corrupt length-delimited binary IPC and decoded token bytes.
+    if (_setmode(_fileno(stdin), _O_BINARY) == -1 ||
+        _setmode(_fileno(stdout), _O_BINARY) == -1) return 3;
+#endif
     if (argc == 2 && std::strcmp(argv[1], "--capabilities") == 0) {
 #ifdef JEND_WITH_LLAMA
         std::cout << "JEND-GGUF-CPU-WORKER-V1 DEV_LLAMA\n";
