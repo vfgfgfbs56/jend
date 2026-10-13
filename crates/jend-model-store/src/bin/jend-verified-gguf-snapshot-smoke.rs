@@ -63,6 +63,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     { return Err("snapshot bytes or signed identity incorrect".into()); }
     println!("Jend GGUF independent release signature to private snapshot: PASS");
 
+    let mut pinned = store.open_verified_handle(&trusted, &signed, 4096)?;
+    if pinned.inspection().manifest_id != signed.manifest_id
+        || pinned.inspection().byte_length != good.len() as u64
+    {
+        return Err("open file lease identity does not match signed manifest".into());
+    }
+    pinned.reverify(&trusted, &signed, 4096)?;
+    println!("Jend GGUF same opened handle signed hash verification: PASS");
+
+
     fs::write(&original, b"untrusted source changed after publication")?;
     store.check_existing(&trusted, &signed, &result.path, 4096)?;
     let second = store.snapshot(&trusted, &signed, &original, 4096)?;
@@ -100,6 +110,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("snapshot accepted below-header byte budget".into());
     }
     println!("Jend GGUF explicit snapshot size budget enforced: PASS");
+
+    // Neither a pathname nor a new trust key is permitted to override the
+    // release identity already bound to this opened file description.
+    if pinned.reverify(&wrong, &signed, 4096).is_ok() {
+        return Err("pinned descriptor accepted a different signing key".into());
+    }
+    println!("Jend GGUF held descriptor rejects wrong signing key: PASS");
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // Atomic rename changes the path, NOT the inode held by an fd.
+        // An attacker can replace the pathname; the old descriptor still
+        // points at the independently signed bytes, and reopening that
+        // changed pathname MUST fail.
+        let old_path = result.path.with_extension("kept");
+        fs::rename(&result.path, &old_path)?;
+        fs::write(&result.path, b"attacker path replacement")?;
+        pinned.reverify(&trusted, &signed, 4096)?;
+        if store.open_verified_handle(&trusted, &signed, 4096).is_ok() {
+            return Err("changed cache pathname accepted without hashing".into());
+        }
+        println!("Jend GGUF file descriptor survives pathname substitution: PASS");
+
+        // A same-user actor can still change the original *inode* after
+        // clearing mode 0400. This is WHY an fd is not yet immutable.
+        fs::set_permissions(&old_path, fs::Permissions::from_mode(0o600))?;
+        fs::write(&old_path, b"tampered original inode")?;
+        if pinned.reverify(&trusted, &signed, 4096).is_ok() {
+            return Err("in-place inode mutation was not detected on rehash".into());
+        }
+        println!("Jend GGUF held descriptor rehash detects same-inode tampering: PASS");
+    }
 
     println!("Jend GGUF snapshot grants no native execution capability: PASS");
     #[cfg(windows)]
