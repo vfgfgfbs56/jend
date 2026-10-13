@@ -1,0 +1,11 @@
+[package]
+name = "jend-migrate"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+sqlx = { version = "=0.8.6", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres", "migrate", "macros"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

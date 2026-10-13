@@ -1,0 +1,33 @@
+[package]
+name = "jend-gateway"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+axum = { version = "0.8", features = ["http1", "json", "tokio", "original-uri"] }
+base64 = "0.22"
+hex = "0.4"
+jend-admission = { path = "../../crates/jend-admission" }
+jend-auth = { path = "../../crates/jend-auth" }
+jend-capability = { path = "../../crates/jend-capability" }
+jend-gateway-core = { path = "../../crates/jend-gateway-core" }
+jend-jreq = { path = "../../crates/jend-jreq" }
+jend-sync = { path = "../../crates/jend-sync" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "=0.8.6", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync"] }
+tower-http = { version = "0.6", features = ["limit", "timeout", "trace", "request-id"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+hmac = "0.12"
+
+sha2 = "0.10.9"
+
+zeroize = "1.9.0"
+
+getrandom = { version = "0.4.3", features = ["std"] }

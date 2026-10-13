@@ -1,0 +1,25 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/jend-core",
+    "crates/jend-auth",
+    "crates/jend-vault",
+    "crates/jend-sync",
+    "crates/jend-model-store",
+    "crates/jend-capability",
+    "crates/jend-jreq",
+    "crates/jend-gateway-core",
+    "crates/jend-control",
+    "crates/jend-release",
+    "crates/jend-admission",
+    "crates/jend-net-broker",
+    "server/jend-gateway",
+    "server/jend-keygen",
+    "server/jend-migrate",
+    "client/jend-cli",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+license = "Apache-2.0 OR MIT"
