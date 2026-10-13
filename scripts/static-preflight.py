@@ -1816,7 +1816,7 @@ for heading in [
     "## 3. Подтверждено",
     "## 4. GitHub PR stack",
     "## 5. Очередь задач",
-    "## 6. Когда архитектуру нужно закончить?",
+    "## 6. Когда именно заканчиваем backend и переходим к frontend?",
     "## 7. Как ОБЯЗАТЕЛЬНО поддерживать этот файл актуальным",
 ]:
     require(heading in handoff_doc, f"Root Jend project handoff missing: {heading}")
