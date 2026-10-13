@@ -69,14 +69,15 @@ def main() -> None:
         caps = run_worker(worker, ("--capabilities",))
         assert caps.returncode == 0 and caps.stdout == (
             b"JEND-GGUF-CPU-WORKER-V1 PROTOCOL_ONLY\n"
-        ) and caps.stderr == b""
+        ) and caps.stderr == b"", (caps.returncode, caps.stdout, caps.stderr)
         print("Jend portable C++ worker compiled on actual host: PASS", flush=True)
 
-        prompt = b"Jend portable offline worker"
+        # The Windows CRT must NOT rewrite CRLF or treat 0x1A as EOF.
+        prompt = b"Jend portable offline worker\\r\\nline\\x1a"
         payload = struct.pack(">I", len(prompt)) + prompt
         response = run_worker(worker, ("--protocol-smoke",), payload)
         expected = b"JENDGGUF1N" + struct.pack(">I", 8) + b"NO_MODEL"
-        assert response.returncode == 0 and response.stdout == expected
+        assert response.returncode == 0 and response.stdout == expected, (response.returncode, response.stdout, response.stderr)
         assert response.stderr == b"" and prompt not in response.stdout
         print("Jend portable C++ framed IPC is byte-identical: PASS", flush=True)
 
@@ -89,7 +90,7 @@ def main() -> None:
             payload + struct.pack(">I", 1) + b"x",
         ):
             result = run_worker(worker, ("--protocol-smoke",), malformed)
-            assert result.returncode != 0 and result.stdout == b""
+            assert result.returncode != 0 and result.stdout == b"", (result.returncode, result.stdout, result.stderr)
         print("Jend portable C++ rejects truncation and second frames: PASS", flush=True)
 
         for args in (
