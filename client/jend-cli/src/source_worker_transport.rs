@@ -114,6 +114,7 @@ pub struct PinnedGetResponse {
     pub status: StatusCode,
     pub x_xet_hash: Option<String>,
     pub content_type: Option<String>,
+    pub content_range: Option<String>,
     pub body: Vec<u8>,
     pub pinned_addresses: Vec<SocketAddr>,
 }
@@ -221,6 +222,7 @@ pub async fn execute_pinned_get(
         return Err(TransportError::InvalidHeader);
     }
     let content_type = optional_header_ascii(&response, reqwest::header::CONTENT_TYPE.as_str())?;
+    let content_range = optional_header_ascii(&response, reqwest::header::CONTENT_RANGE.as_str())?;
 
     let mut body = Vec::new();
     let mut received = 0u64;
@@ -247,6 +249,7 @@ pub async fn execute_pinned_get(
         status,
         x_xet_hash,
         content_type,
+        content_range,
         body,
         pinned_addresses,
     })
