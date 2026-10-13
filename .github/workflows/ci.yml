@@ -34,3 +34,5 @@ jobs:
         run: bash scripts/dev-xet-signed-page-admission-smoke.sh
       - name: Verify universal runtime planning rejects unsupported or low-memory choices
         run: bash scripts/dev-runtime-feasibility-smoke.sh
+      - name: Verify pinned native GGUF worker protocol without model or llama dependency
+        run: bash scripts/dev-native-gguf-worker-protocol-smoke.sh
