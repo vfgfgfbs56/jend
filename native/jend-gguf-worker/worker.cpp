@@ -29,6 +29,9 @@
 #ifdef JEND_WITH_LLAMA
 #include "llama.h"
 #endif
+#if defined(__linux__) && !defined(JEND_WITH_LLAMA)
+#include "linux_sandbox_probe.h"
+#endif
 
 namespace {
 constexpr uint32_t kMaxPromptBytes = 4096;
@@ -167,6 +170,19 @@ int main(int argc, char** argv) {
     if (_setmode(_fileno(stdin), _O_BINARY) == -1 ||
         _setmode(_fileno(stdout), _O_BINARY) == -1) return 3;
 #endif
+    // Test-only probe: seccomp rules apply to the current process BEFORE
+    // any worker IPC. Never reuse this branch for real GGUF inference.
+    // Unsupported platforms and builds fail closed with no success marker.
+    if (argc == 2 && std::strcmp(argv[1], "--sandbox-probe") == 0) {
+#if defined(__linux__) && !defined(JEND_WITH_LLAMA)
+        if (!jend_linux_probe::install_restrictions()) return 3;
+        if (!jend_linux_probe::verify_active_restrictions()) return 3;
+        std::cout << "JEND-LINUX-RESTRICTED-PROBE-V1\n";
+        return std::cout.flush() ? 0 : 5;
+#else
+        return 3;
+#endif
+    }
     if (argc == 2 && std::strcmp(argv[1], "--capabilities") == 0) {
 #ifdef JEND_WITH_LLAMA
         std::cout << "JEND-GGUF-CPU-WORKER-V1 DEV_LLAMA\n";
