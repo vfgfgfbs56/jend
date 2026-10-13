@@ -1,0 +1,20 @@
+name: Jend Rust security and workspace checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rust-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt
+      - name: Static policy, integrity, formatting, builds and tests
+        run: bash scripts/check-headless.sh

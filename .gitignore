@@ -1,0 +1,10 @@
+/target/
+**/target/
+Cargo.lock.bak
+.jend-dev-secrets/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+/resolved-metadata.json

@@ -1,0 +1,36 @@
+name: Jend PostgreSQL headless security smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  headless:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jend_dev
+          POSTGRES_PASSWORD: jend_dev_ci
+          POSTGRES_DB: jend
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jend_dev -d jend"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://jend_dev:jend_dev_ci@127.0.0.1:5432/jend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.0 --profile minimal
+      - name: Execute end-to-end headless registration/security smoke
+        run: bash scripts/ci-headless-smoke.sh
