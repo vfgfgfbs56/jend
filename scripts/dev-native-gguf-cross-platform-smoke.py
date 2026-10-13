@@ -73,7 +73,7 @@ def main() -> None:
         print("Jend portable C++ worker compiled on actual host: PASS", flush=True)
 
         # The Windows CRT must NOT rewrite CRLF or treat 0x1A as EOF.
-        prompt = b"Jend portable offline worker\\r\\nline\\x1a"
+        prompt = b"Jend portable offline worker\r\nline\x1a"
         payload = struct.pack(">I", len(prompt)) + prompt
         response = run_worker(worker, ("--protocol-smoke",), payload)
         expected = b"JENDGGUF1N" + struct.pack(">I", 8) + b"NO_MODEL"
