@@ -1575,4 +1575,46 @@ require(
     "M8.5.13 must preserve WeightVM zero-network architecture",
 )
 
+# ADR-0014 / M8.5.14. Jend is a multi-publisher universal
+# model interface, not a Jend-original foundation-model project. This is
+# a planning-only resource policy: no uncontrolled native engine loading.
+universal_adr = read("docs/ADR-0014-UNIVERSAL-MODEL-RUNTIME-AND-WEIGHTFABRIC.md")
+runtime_policy = read("crates/jend-model-store/src/runtime_feasibility.rs")
+runtime_smoke = read("crates/jend-model-store/src/bin/jend-runtime-feasibility-smoke.rs")
+for required in [
+    "universal user interface for existing familiar AI models",
+    "not a",
+    "M7.13-STORE-ONLY-JEND-NATIVE-MODELS.md",
+    "GGUF", "ONNX", "safetensors", "WeightFabric",
+    "independent", "TUF", "RAM", "P2P",
+]:
+    require(required.lower() in universal_adr.lower(), f"M8.5.14 universal architecture missing: {required}")
+for required in [
+    "MissingArchitectureAdapter",
+    "UnsupportedSparseSemantics",
+    "IncompatibleBackend",
+    "InsufficientRam",
+    "checked_add",
+    "free_physical_ram_bytes",
+    "reserved_headroom_bytes",
+    "resident_weight_bytes < variant.weight_bytes",
+]:
+    require(required in runtime_policy, f"M8.5.14 conservative model runtime policy missing: {required}")
+for required in [
+    "Jend weak-device dense RAM versus disk gate: PASS",
+    "Jend standalone safetensors inference refused: PASS",
+    "Jend mismatched model backend rejected: PASS",
+    "Jend unverified sparse paging claim rejected: PASS",
+    "Jend resource feasibility remains planning-only, no inference: PASS",
+]:
+    require(required in runtime_smoke, f"M8.5.14 standalone model policy smoke missing: {required}")
+require(
+    (ROOT / "scripts/dev-runtime-feasibility-smoke.sh").is_file(),
+    "M8.5.14 Mac resource smoke script missing",
+)
+require(
+    "reqwest" not in read("crates/jend-model-store/Cargo.toml"),
+    "M8.5.14 resource feasibility must not add network to model-store",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")
