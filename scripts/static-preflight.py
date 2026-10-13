@@ -1804,4 +1804,29 @@ require(
     "M8.5.15.4 verified snapshot must NOT imply native execution",
 )
 
+# Root JEND-PROJECT-CONTEXT.md is required for cross-chat continuity.
+# The PR-specific gate additionally compares Git diff and blocks unrecorded
+# code/CI/docs changes. Static preflight enforces the file's core sections.
+handoff_doc = read("JEND-PROJECT-CONTEXT.md")
+handoff_gate = read("scripts/check-project-context-update.py")
+ci_handoff = read(".github/workflows/ci.yml")
+for heading in [
+    "## 1. Что мы строим",
+    "## 2. Архитектура",
+    "## 3. Подтверждено",
+    "## 4. GitHub PR stack",
+    "## 5. Очередь задач",
+    "## 6. Когда архитектуру нужно закончить?",
+    "## 7. Как ОБЯЗАТЕЛЬНО поддерживать этот файл актуальным",
+]:
+    require(heading in handoff_doc, f"Root Jend project handoff missing: {heading}")
+require(
+    "JEND-PROJECT-CONTEXT.md" in read("README.md")
+    and "scripts/check-project-context-update.py" in ci_handoff
+    and "JEND_PR_BASE_SHA" in ci_handoff
+    and "JEND_PR_HEAD_SHA" in ci_handoff
+    and "PROJECT-MANIFEST.sha256" in handoff_gate,
+    "Jend project continuity update gate and README pointer must remain active",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")
