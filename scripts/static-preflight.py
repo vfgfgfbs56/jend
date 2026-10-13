@@ -1485,4 +1485,54 @@ require(
     "M8.5.11 must preserve model-store network isolation",
 )
 
+# M8.5.12: do not turn live source metadata's natural singleton/multi-entry
+# shape into a fake multipart grant. Enforce atomic signed HTTP 206 per entry.
+executor_m8512 = read("client/jend-cli/src/xet_signed_fetch_executor.rs")
+live_m8512 = read("client/jend-cli/src/bin/jend-hf-xet-scheduled-live-smoke.rs")
+offline_m8512 = read("client/jend-cli/src/bin/jend-xet-scheduled-decode-smoke.rs")
+source_m8512 = read("client/jend-cli/src/source_worker_transport.rs")
+for required in [
+    "validate_signed_single_range_body",
+    "execute_signed_xet_single_range",
+    "execute_signed_xet_multi_range",
+    "execute_signed_schedule_sequentially",
+    "validate_schedule",
+    "max_total_physical_bytes",
+    "UnexpectedResponse",
+    "UntrustedXorbPhysicalRange",
+]:
+    require(required in executor_m8512, f"M8.5.12 atomic signed schedule gate missing: {required}")
+for required in [
+    "JEND_ALLOW_LIVE_HF_XET_SCHEDULE",
+    "JEND_HF_TOKEN",
+    "execute_signed_schedule_sequentially",
+    "decode_untrusted_multipart_ranges",
+    "reconstruct_slice_from_ranges",
+    "NOT_EXERCISED (source returned singleton entries)",
+    "Jend live Xet unverified bytes kept outside WeightVM: PASS",
+]:
+    require(required in live_m8512, f"M8.5.12 live signed schedule probe missing: {required}")
+for required in [
+    "validate_single_range_content_range",
+    'ACCEPT_ENCODING, "identity"',
+    "ExpectedResponse::SingleRange206",
+]:
+    require(required in source_m8512, f"M8.5.12 singleton Content-Range hardening missing: {required}")
+for required in [
+    "Jend Xet separate signed singleton entries: PASS",
+    "Jend Xet exact single Content-Range binding: PASS",
+    "Jend Xet scheduled HTTP 200 fallback rejected: PASS",
+]:
+    require(required in offline_m8512, f"M8.5.12 offline scheduled smoke missing: {required}")
+require(
+    (ROOT / "scripts/dev-xet-scheduled-decode-smoke.sh").is_file()
+    and (ROOT / "scripts/dev-hf-xet-scheduled-live-smoke.sh").is_file(),
+    "M8.5.12 Mac scripts missing",
+)
+require(
+    "reqwest" not in read("crates/jend-model-store/Cargo.toml")
+    and "tokio" not in read("crates/jend-model-store/Cargo.toml"),
+    "M8.5.12 must preserve network isolation in WeightVM",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")

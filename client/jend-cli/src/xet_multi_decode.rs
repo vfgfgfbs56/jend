@@ -40,7 +40,9 @@ pub fn decode_untrusted_multipart_ranges(
     {
         return Err(MultiDecodeError::InvalidLimits);
     }
-    if !(2..=HARD_MAX_PARTS).contains(&parts.len()) {
+    // A signed reconstruction may legitimately contain one singleton fetch.
+    // Do not require an artificial multipart shape for safe bounded decoding.
+    if !(1..=HARD_MAX_PARTS).contains(&parts.len()) {
         return Err(MultiDecodeError::InvalidPart);
     }
 
@@ -132,6 +134,16 @@ mod tests {
                 bytes: record(b"def"),
             },
         ]
+    }
+
+    #[test]
+    fn single_signed_physical_range_is_bounded_and_decodable() {
+        let mut parts = fixture();
+        parts.truncate(1);
+        let decoded = decode_untrusted_multipart_ranges(parts, 11, 3).unwrap();
+        assert_eq!(decoded.len(), 1);
+        assert_eq!(decoded[0].chunks, vec![b"abc".to_vec()]);
+        assert!(decode_untrusted_multipart_ranges(Vec::new(), 11, 3).is_err());
     }
 
     #[test]
