@@ -29,6 +29,7 @@ mod safety;
 mod weightvm;
 mod runtime_feasibility;
 mod signed_gguf;
+mod gguf_snapshot;
 mod weight_store;
 mod virtual_map;
 
@@ -112,3 +113,5 @@ pub use runtime_feasibility::{
 };
 
 pub use signed_gguf::{VerifiedGgufInspection, inspect_independently_signed_gguf};
+
+pub use gguf_snapshot::{VerifiedGgufSnapshot, VerifiedGgufSnapshotStore};
