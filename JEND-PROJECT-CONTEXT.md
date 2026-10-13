@@ -69,6 +69,12 @@ OPTIONAL REMOTE: только отдельная явная сессия BYOK/п
 - M8.5.15.3: independently signed complete GGUF stream/hash inspection — **6 PASS**.
 - M8.5.15.4 + M8.5.15.5: пользователь выполнил общий smoke на Mac — **10 PASS**, включая независимую подпись и snapshot (6), открытый дескриптор и повторное хеширование (4). **Это тест синтетического GGUF и не реальный инференс.**
 
+**PR #16 / M8.5.15.6b** — GitHub CI **PASS**, персональный Mac smoke нового этапа ещё НЕ подтверждён:
+- [Rust и Linux seccomp smoke](https://github.com/vfgfgfbs56/jend/actions/runs/38456389618) — PASS. На Ubuntu реально установлены seccomp/no-new-privs/rlimits и сетевой socket отказал с EPERM.
+- [Native IPC portability matrix](https://github.com/vfgfgfbs56/jend/actions/runs/38456389587) — все 6 jobs PASS: Linux x64/ARM64 kernel-probe, Windows и оба Mac корректно отклоняют неподдерживаемый Linux sandbox, iOS/Android только cross-compile протокола.
+- [PostgreSQL security](https://github.com/vfgfgfbs56/jend/actions/runs/38456389693) — PASS.
+- ВАЖНО: seccomp **не изолирует filesystem/E2EE**, не применяется к настоящему GGUF inference, не реализует полноценный OS sandbox на Mac/Windows и не делает worker production-ready.
+
 **PR #15 / M8.5.15.6a** — CI **PASS**, Mac-тест новой проверки ещё НЕ подтверждён:
 - [Rust + 6 native binary integrity smoke PASS](https://github.com/vfgfgfbs56/jend/actions/runs/38453537643) — прошли exact SHA-256, чужой digest, изменённый бинарник, size/path preflight, model-free IPC и отсутствие права production execution.
 - [Native IPC platform CI](https://github.com/vfgfgfbs56/jend/actions/runs/38453537749) — 6 jobs PASS (desktop и мобильная cross-compile).
@@ -134,7 +140,8 @@ Jend GGUF snapshot grants no native execution capability: PASS
 - [ ] Не включать нативную загрузку GGUF до прочного trust/sandbox gate.
 - [x] M8.5.15.6a: CI SHA-256 binary integrity smoke 6 PASS, portability и PostgreSQL PASS.
 - [x] M8.5.15.6a: Mac **6 PASS** подтверждены пользователем; это не OS sandbox и не production exec.
-- [ ] M8.5.15.6b: проверить kernel-applied Linux seccomp and rlimit в x86_64/ARM64 CI и отказ на macOS/Windows; Mac smoke должен подтвердить **отказ**, не поддержку sandbox.
+- [x] M8.5.15.6b: Linux x64/ARM64 seccomp kernel probe и macOS/Windows fail-closed refusal в CI PASS.
+- [ ] M8.5.15.6b: пользовательский Mac smoke на реальном Mac ещё не подтверждён; он должен проверить **отказ**, а не sandbox.
 - [ ] Backend & Security Ready gate: завершить отдельно после Architecture v1 freeze, перед основным frontend; детали в §6.
 
 ### СЛЕДУЮЩИЕ ИНЖЕНЕРНЫЕ ЭТАПЫ (план, названия предварительные)
