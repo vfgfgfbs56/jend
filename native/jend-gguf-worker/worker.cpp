@@ -28,9 +28,11 @@
 namespace {
 constexpr uint32_t kMaxPromptBytes = 4096;
 constexpr uint32_t kMaxFrameBytes = 16384;
+#ifdef JEND_WITH_LLAMA
 constexpr uint32_t kMaxModelContextTokens = 512;
 constexpr int kMaxGeneratedTokens = 16;
 constexpr uintmax_t kMaxDevModelBytes = UINT64_C(4) * 1024 * 1024 * 1024;
+#endif
 
 bool output_bytes(const char* bytes, size_t len) {
     std::cout.write(bytes, static_cast<std::streamsize>(len));
@@ -66,6 +68,7 @@ bool read_prompt(std::string& prompt) {
     return static_cast<bool>(std::cin.read(prompt.data(), static_cast<std::streamsize>(n)));
 }
 
+#ifdef JEND_WITH_LLAMA
 bool preflight_dev_path(const std::string& path) {
     namespace fs = std::filesystem;
     if (path.empty() || path.size() > 4096 || path.find('\0') != std::string::npos) return false;
@@ -78,7 +81,6 @@ bool preflight_dev_path(const std::string& path) {
     return !error && n > 0 && n <= kMaxDevModelBytes;
 }
 
-#ifdef JEND_WITH_LLAMA
 void fill_batch(llama_batch_ext* batch, const llama_token* tokens, int32_t count, llama_pos position) {
     llama_batch_ext_clear(batch);
     for (int32_t i = 0; i < count; ++i) {
