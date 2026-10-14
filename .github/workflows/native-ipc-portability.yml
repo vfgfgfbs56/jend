@@ -32,6 +32,10 @@ jobs:
         run: python scripts/dev-native-gguf-cross-platform-smoke.py
       - name: Enforce Linux seccomp or deny unsupported host sandbox claim
         run: python scripts/dev-native-linux-seccomp-probe.py
+      - name: Generate lockfile for signed trusted-launch fixture
+        run: cargo generate-lockfile
+      - name: Verify trusted Rust launch before hostile native constructor
+        run: python scripts/dev-native-trusted-launch-smoke.py
 
   mobile-parser-compile:
     name: Mobile Rust parser compile / Android + iOS ARM64

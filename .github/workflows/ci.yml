@@ -53,3 +53,5 @@ jobs:
         run: bash scripts/dev-native-worker-integrity-smoke.sh
       - name: Verify Linux kernel seccomp native worker denies network and process privilege
         run: python3 scripts/dev-native-linux-seccomp-probe.py
+      - name: Verify signed sealed executable and confinement before native constructor
+        run: python3 scripts/dev-native-trusted-launch-smoke.py
