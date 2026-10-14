@@ -108,9 +108,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Prepare synthetic parent state deliberately. It MUST disappear before
         // the hostile C++ constructor. Never use user secrets in this fixture.
         let private_fd = fs::File::open(&canary)?;
-        require(unsafe { libc::dup2(private_fd.as_raw_fd(), 1237) } == 1237,
+        require(unsafe { libc::dup2(private_fd.as_raw_fd(), 127) } == 127,
             "synthetic parent descriptor creation failed")?;
-        let address = 0x400000000000usize as *mut libc::c_void;
+        let address = 0x100000000usize as *mut libc::c_void;
         let mapped = unsafe { libc::mmap(address, 4096, libc::PROT_READ | libc::PROT_WRITE,
             libc::MAP_PRIVATE | libc::MAP_ANONYMOUS | libc::MAP_FIXED_NOREPLACE, -1, 0) };
         require(mapped == address, "synthetic parent mapping creation failed")?;
@@ -119,7 +119,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let output = run_model_free_fixture(&prepared, FixtureCommand::ConstructorProbe, Duration::from_secs(3))?;
         require(output == b"JEND-PREEXEC-CONSTRUCTOR-V1\n", "pre-main confinement proof failed")?;
-        require(unsafe { libc::fcntl(1237, libc::F_GETFD) } >= 0,
+        require(unsafe { libc::fcntl(127, libc::F_GETFD) } >= 0,
             "child cleanup modified the parent descriptor table")?;
         println!("Jend trusted launch constructor sees no parent environment FDs or mapped canary: PASS");
         println!("Jend trusted launch constructor filesystem network memory process and exec attacks denied: PASS");
@@ -144,7 +144,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         require(matches!(run_model_free_fixture(&prepared, FixtureCommand::Flood, Duration::from_secs(3)),
             Err(LaunchError::OutputLimit)), "stdout flood escaped bound")?;
         require(matches!(run_model_free_fixture(&prepared, FixtureCommand::Cpu, Duration::from_secs(3)),
-            Err(LaunchError::WorkerFailed)), "CPU spinner escaped kernel CPU quota")?;
+            Err(LaunchError::CpuQuotaExceeded)), "CPU spinner escaped kernel CPU quota")?;
         require(unsafe { libc::waitpid(-1, std::ptr::null_mut(), libc::WNOHANG) } == -1
             && unsafe { *libc::__errno_location() } == libc::ECHILD,
             "native failure left an unreaped child")?;
@@ -157,7 +157,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         require(native_gguf_ipc::parse_native_response(&response)? == native_gguf_ipc::NativeResponse::NoModel,
             "static C++ fixture returned model output")?;
         println!("Jend trusted launch static C++ IPC remains NO_MODEL: PASS");
-        unsafe { libc::munmap(mapped, 4096); libc::close(1237); }
+        unsafe { libc::munmap(mapped, 4096); libc::close(127); }
         println!("Jend trusted launch grants no production inference capability: PASS");
     }
     Ok(())

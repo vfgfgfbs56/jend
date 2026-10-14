@@ -23,7 +23,7 @@
 
 extern char** environ;
 namespace {
-constexpr uintptr_t kParentMapping = UINT64_C(0x400000000000);
+constexpr uintptr_t kParentMapping = UINT64_C(0x100000000);
 constexpr rlim_t kRam = 128 * 1024 * 1024;
 bool constructor_checked = false;
 

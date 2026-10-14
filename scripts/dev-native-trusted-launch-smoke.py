@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 import platform
 import shutil
@@ -29,16 +30,18 @@ def main() -> None:
         folder = Path(temp)
         fixture, protocol, dynamic, canary = [folder / name for name in ("fixture", "protocol", "dynamic", "canary")]
         canary.write_bytes(b"SYNTHETIC-PRIVATE-CANARY-NO-USER-DATA")
-        define = '-DJEND_PRIVATE_CANARY_PATH="' + str(canary) + '"'
+        define = '-DJEND_PRIVATE_CANARY_PATH=' + json.dumps(str(canary))
         flags = [compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror", "-O2"]
         run(flags + ["-static", "-no-pie", define, "native/jend-gguf-worker/preexec_attack_fixture.cpp", "-o", str(fixture)])
         run(flags + ["-static", "-no-pie", "native/jend-gguf-worker/worker.cpp", "-o", str(protocol)])
-        run(flags + ["native/jend-gguf-worker/worker.cpp", "-o", str(dynamic)])
+        # ET_EXEC + PT_INTERP: tests interpreter rejection independently of PIE.
+        run(flags + ["-no-pie", "native/jend-gguf-worker/worker.cpp", "-o", str(dynamic)])
         env = os.environ.copy()
         env["JEND_TEST_SECRET_CANARY"] = "SYNTHETIC-ENV-NO-USER-SECRET"
         # Control: the hostile constructor cannot produce PASS outside confinement.
         control = subprocess.run([str(fixture), "--constructor-probe"], cwd=ROOT,
-            env=env, capture_output=True, timeout=5)
+            env={"JEND_TEST_SECRET_CANARY": "SYNTHETIC-ENV-NO-USER-SECRET"},
+            capture_output=True, timeout=5)
         if control.returncode != 97 or control.stdout:
             raise SystemExit("constructor fixture failed its unsandboxed negative control")
         print("Jend trusted launch adversarial constructor negative control: PASS", flush=True)

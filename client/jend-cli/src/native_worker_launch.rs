@@ -24,6 +24,7 @@ pub enum LaunchError {
     InvalidTimeout,
     DeadlineExceeded,
     OutputLimit,
+    CpuQuotaExceeded,
     WorkerFailed,
     Io,
 }
@@ -40,6 +41,7 @@ impl std::fmt::Display for LaunchError {
             Self::InvalidTimeout => "native launch deadline rejected",
             Self::DeadlineExceeded => "native launch deadline exceeded",
             Self::OutputLimit => "native launch output limit exceeded",
+            Self::CpuQuotaExceeded => "native fixture terminated at CPU quota",
             Self::WorkerFailed => "native fixture failed",
             Self::Io => "native launch IO failed",
         })
@@ -444,12 +446,19 @@ mod linux {
                 let waited = unsafe { libc::waitpid(pid, &mut status, libc::WNOHANG) };
                 if waited == pid { child.reaped = true; }
                 else if waited < 0 && unsafe { *libc::__errno_location() } != libc::EINTR {
+                    // If an external SIGCHLD reaper consumed the child, its PID
+                    // can be reused. Never signal that numeric PID on this path.
+                    if unsafe { *libc::__errno_location() } == libc::ECHILD { child.reaped = true; }
                     return Err(LaunchError::Io);
                 }
             }
             if child.reaped && eof {
                 if libc::WIFEXITED(status) && libc::WEXITSTATUS(status) == 0 { return Ok(bytes); }
                 if libc::WIFEXITED(status) && libc::WEXITSTATUS(status) == 125 { return Err(LaunchError::SetupRefused); }
+                if matches!(command, FixtureCommand::Cpu) && libc::WIFSIGNALED(status)
+                    && libc::WTERMSIG(status) == libc::SIGKILL {
+                    return Err(LaunchError::CpuQuotaExceeded);
+                }
                 return Err(LaunchError::WorkerFailed);
             }
             if start.elapsed() >= timeout { return Err(LaunchError::DeadlineExceeded); }
