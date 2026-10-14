@@ -45,8 +45,11 @@ def main() -> None:
             raise RuntimeError("missing compiled protocol worker")
         print("Jend native security probe compiles on host: PASS")
 
+        canary = Path(directory) / "jend-local-private-canary"
+        canary.write_bytes(b"JEND-TEST-ONLY-CANARY-NOT-USER-SECRET")
+        canary.chmod(0o600)
         result = subprocess.run(
-            [str(worker), "--sandbox-probe"],
+            [str(worker), "--sandbox-probe", "--deny-read", str(canary)],
             input=b"", capture_output=True, timeout=8,
         )
         is_supported_linux = (
@@ -61,12 +64,24 @@ def main() -> None:
                 )
             print("Jend Linux seccomp no-new-privs and network denial: PASS")
             print("Jend Linux finite CPU RAM open-files and core limits: PASS")
+            print("Jend Linux kernel denies new readable-file handles: PASS")
+            print("Jend Linux kernel denies child process creation: PASS")
         else:
             if result.returncode == 0 or result.stdout != b"":
                 raise RuntimeError(
                     "unsupported OS/ISA incorrectly reported a native sandbox"
                 )
             print("Jend unsupported desktop OS native sandbox refused: PASS")
+
+        # A missing canary argument must never accidentally re-enable the
+        # original weaker probe entrypoint or emit a success marker.
+        missing = subprocess.run(
+            [str(worker), "--sandbox-probe"],
+            input=b"", capture_output=True, timeout=5,
+        )
+        if missing.returncode == 0 or missing.stdout:
+            raise RuntimeError("test-only restricted probe accepted missing canary")
+        print("Jend native missing security canary argument refused: PASS")
 
         # This probe is a separate development entrypoint. The normal native
         # worker still must NOT accept model inference without other gates.
@@ -77,7 +92,7 @@ def main() -> None:
         if rejected.returncode == 0 or rejected.stdout:
             raise RuntimeError("native GGUF inference incorrectly activated")
         print("Jend native probe leaves production model execution disabled: PASS")
-        print("Jend native probe proves NO filesystem or E2EE isolation: PASS")
+        print("Jend native restricted probe still exposes inherited descriptors and E2EE risk: PASS")
 
 
 if __name__ == "__main__":
