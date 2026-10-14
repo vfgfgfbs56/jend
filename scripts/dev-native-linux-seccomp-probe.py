@@ -102,7 +102,7 @@ def main() -> None:
         # original weaker probe entrypoint or emit a success marker.
         missing = subprocess.run(
             [str(worker), "--sandbox-probe"],
-            input=b"", capture_output=True, timeout=5,
+            env=clean_env, input=b"", capture_output=True, timeout=5,
         )
         if missing.returncode == 0 or missing.stdout:
             raise RuntimeError("test-only restricted probe accepted missing canary")
@@ -122,7 +122,7 @@ def main() -> None:
         # worker still must NOT accept model inference without other gates.
         rejected = subprocess.run(
             [str(worker), "--infer-dev", "--model", str(build / "no.gguf")],
-            input=b"", capture_output=True, timeout=5,
+            env=clean_env, input=b"", capture_output=True, timeout=5,
         )
         if rejected.returncode == 0 or rejected.stdout:
             raise RuntimeError("native GGUF inference incorrectly activated")
