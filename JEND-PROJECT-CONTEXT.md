@@ -1,7 +1,7 @@
 # JEND — PROJECT CONTEXT & ROADMAP (памятка для нового чата)
 
 > **Обновлено:** 2026-10-14. **Текущий этап:** M8.5.15.6b.1 Linux denied-new-file-open proof + service-wide security risk ledger (в разработке); последний подтверждённый Mac-тест — M8.5.15.6b, 4 PASS (отказ в неподдерживаемом Linux sandbox).  
-> **Основная ветка разработки:** `feat/m8.5.15.6b1-file-open-denial-security-register`, новый stacked PR поверх [#16](https://github.com/vfgfgfbs56/jend/pull/16).  
+> **Основная ветка разработки:** `feat/m8.5.15.6b1-file-open-denial-security-register`, [#17](https://github.com/vfgfgfbs56/jend/pull/17) поверх [#16](https://github.com/vfgfgfbs56/jend/pull/16).  
 > **Статус:** прототипы проверки/хранения моделей и взаимодействия Rust/C++; **реальный безопасный инференс сторонней модели в Jend пока НЕ реализован**.  
 > **Важно:** этот файл — редактируемый снимок на момент коммита, не автоматически обновляемые сведения о GitHub. Перед новым действием перечитать его и **проверить актуальное состояние PR, веток и CI**.
 
@@ -107,7 +107,7 @@ Jend GGUF explicit snapshot size budget enforced: PASS
 Jend GGUF snapshot grants no native execution capability: PASS
 ```
 
-## 4. GitHub PR stack (ВСЕ открыты на 2026-10-13; проверить заново)
+## 4. GitHub PR stack (ВСЕ открыты на 2026-10-14; проверить заново)
 
 Все PR **stacked**, каждый зависит от предыдущего; без разрешения пользователя **не merge**.
 
@@ -128,7 +128,7 @@ Jend GGUF snapshot grants no native execution capability: PASS
 | 13 | [#14](https://github.com/vfgfgfbs56/jend/pull/14) | M8.5.15.5 same-open-handle signed GGUF rehash, Mac 10 PASS; ещё не immutable OS backing |
 | 14 | [#15](https://github.com/vfgfgfbs56/jend/pull/15) | M8.5.15.6a worker SHA-256, CI и Mac 6 PASS; NO production attestation / sandbox |
 | 15 | [#16](https://github.com/vfgfgfbs56/jend/pull/16) | M8.5.15.6b Linux-only seccomp/rlimit protocol probe; macOS/Windows reject; никакого реального GGUF запуска |
-| 16 | PR #17 (создаётся) | M8.5.15.6b.1 deny new file opens / fork EPERM + полный реестр рисков безопасности; НЕ production sandbox |
+| 16 | [#17](https://github.com/vfgfgfbs56/jend/pull/17) | M8.5.15.6b.1 deny new file opens / fork EPERM + полный реестр рисков безопасности; НЕ production sandbox |
 
 ## 5. Очередь задач — последовательность и условия допуска
 
