@@ -13,6 +13,7 @@
 #include <sys/ptrace.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/uio.h>
 #include <unistd.h>
@@ -30,11 +31,53 @@ bool constructor_checked = false;
 void need(bool condition) { if (!condition) _exit(97); }
 void denied(long result) { need(result == -1 && errno == EPERM); }
 
+#ifdef JEND_WITH_SEALED_MODEL_PROBE
+void inspect_sealed_model_before_main() {
+    constexpr char expected[] = "GGUF\x03\x00\x00\x00"
+        "\x01\x00\x00\x00\x00\x00\x00\x00"
+        "\x00\x00\x00\x00\x00\x00\x00\x00"
+        "JEND-SYNTHETIC-PUBLIC-GGUF";
+    struct stat statbuf{};
+    need(fstat(4, &statbuf) == 0 && S_ISREG(statbuf.st_mode)
+        && statbuf.st_size == sizeof(expected) - 1 && (statbuf.st_mode & 0111) == 0);
+    need((fcntl(4, F_GETFL) & O_ACCMODE) == O_RDONLY);
+    constexpr int seals = F_SEAL_WRITE | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_SEAL | 0x20;
+    const int actual_seals = fcntl(4, F_GET_SEALS);
+    need(actual_seals >= 0 && (actual_seals & seals) == seals);
+    char bytes[sizeof(expected)] = {};
+    need(syscall(SYS_pread64, 4, bytes, sizeof(bytes), 0) == sizeof(expected) - 1);
+    need(std::memcmp(bytes, expected, sizeof(expected) - 1) == 0);
+    errno = 0;
+    need(write(4, "tamper", 6) == -1 && errno == EBADF);
+    denied(syscall(SYS_ftruncate, 4, 0));
+    denied(syscall(SYS_fchmod, 4, 0500));
+    errno = 0;
+    need(mmap(nullptr, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, 4, 0) == MAP_FAILED
+        && errno == EACCES);
+    void* readonly = mmap(nullptr, 4096, PROT_READ, MAP_SHARED, 4, 0);
+    need(readonly != MAP_FAILED && std::memcmp(readonly, expected, sizeof(expected) - 1) == 0);
+    denied(mprotect(readonly, 4096, PROT_READ | PROT_EXEC));
+    errno = 0;
+    need(mmap(nullptr, 4096, PROT_READ | PROT_EXEC, MAP_PRIVATE, 4, 0) == MAP_FAILED
+        && errno == EPERM);
+    need(munmap(readonly, 4096) == 0);
+    char* const args[] = {const_cast<char*>("model"), nullptr};
+    char* const env[] = {nullptr};
+    denied(syscall(SYS_execveat, 4, "", args, env, AT_EMPTY_PATH));
+    denied(syscall(SYS_pread64, UINT64_C(0x100000004), bytes, 1, 0));
+}
+#endif
+
 __attribute__((constructor)) void attack_before_main() {
     need(environ && !environ[0]); // entire env empty, including loader variables
     need(prctl(PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0) == 1);
     need(prctl(PR_GET_SECCOMP, 0, 0, 0, 0) == 2);
+    need(syscall(SYS_personality, UINT64_C(0xffffffff)) == 0);
+    denied(syscall(SYS_personality, UINT64_C(0x00400000))); // READ_IMPLIES_EXEC
     for (int fd = 3; fd < 2048; ++fd) {
+#ifdef JEND_WITH_SEALED_MODEL_PROBE
+        if (fd == 4) { need(fcntl(fd, F_GETFD) >= 0); continue; }
+#endif
         errno = 0;
         need(fcntl(fd, F_GETFD) == -1 && errno == EBADF);
     }
@@ -78,8 +121,14 @@ __attribute__((constructor)) void attack_before_main() {
     for (int resource : {RLIMIT_AS, RLIMIT_CPU, RLIMIT_NOFILE, RLIMIT_CORE}) {
         rlimit bound{};
         need(getrlimit(resource, &bound) == 0);
+        constexpr rlim_t fds =
+#ifdef JEND_WITH_SEALED_MODEL_PROBE
+            5;
+#else
+            4;
+#endif
         const rlim_t expected = resource == RLIMIT_AS ? kRam
-            : resource == RLIMIT_CPU ? 1 : resource == RLIMIT_NOFILE ? 4 : 0;
+            : resource == RLIMIT_CPU ? 1 : resource == RLIMIT_NOFILE ? fds : 0;
         need(bound.rlim_cur == expected && bound.rlim_max == expected);
     }
     errno = 0;
@@ -88,12 +137,21 @@ __attribute__((constructor)) void attack_before_main() {
 #if defined(__x86_64__)
     denied(syscall(SYS_socket | 0x40000000, AF_INET, SOCK_STREAM, 0)); // x32
 #endif
+#ifdef JEND_WITH_SEALED_MODEL_PROBE
+    inspect_sealed_model_before_main();
+#endif
     constructor_checked = true;
 }
 }
 
 int main(int argc, char** argv) {
     need(constructor_checked && argc == 2);
+#ifdef JEND_WITH_SEALED_MODEL_PROBE
+    if (std::strcmp(argv[1], "--model-handle-probe") == 0) {
+        constexpr char proof[] = "JEND-SEALED-GGUF-DATA-V1\n";
+        return write(1, proof, sizeof(proof) - 1) == sizeof(proof) - 1 ? 0 : 98;
+    }
+#endif
     if (std::strcmp(argv[1], "--constructor-probe") == 0) {
         constexpr char proof[] = "JEND-PREEXEC-CONSTRUCTOR-V1\n";
         return write(1, proof, sizeof(proof) - 1) == sizeof(proof) - 1 ? 0 : 98;

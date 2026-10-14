@@ -36,6 +36,8 @@ jobs:
         run: cargo generate-lockfile
       - name: Verify trusted Rust launch before hostile native constructor
         run: python scripts/dev-native-trusted-launch-smoke.py
+      - name: Verify sealed GGUF data capability or reject unsupported host
+        run: python scripts/dev-native-sealed-model-smoke.py
 
   mobile-parser-compile:
     name: Mobile Rust parser compile / Android + iOS ARM64

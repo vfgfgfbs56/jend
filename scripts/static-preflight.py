@@ -2020,5 +2020,12 @@ require(
     and "dev-native-trusted-launch-smoke.py" in trusted_launch_matrix,
     "M8.5.15.6c must remain a CI-verified model-free trusted-launch experiment",
 )
+require(
+    "mod native_model_handoff" not in read("client/jend-cli/src/main.rs")
+    and "dev-native-sealed-model-smoke.py" in trusted_launch_matrix
+    and "No production inference" in read("docs/M8.5.15.6D-SEALED-GGUF-DATA-HANDOFF.md")
+    and "Backend & Security Ready" in read("docs/JEND-NATIVE-SECURITY-PLAN.md"),
+    "M8.5.15.6d must keep synthetic data handoff behind native production gates",
+)
 
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")

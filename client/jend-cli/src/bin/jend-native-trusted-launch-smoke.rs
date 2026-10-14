@@ -3,6 +3,9 @@
 #[path = "../native_worker_launch.rs"]
 mod native_worker_launch;
 #[allow(dead_code)]
+#[path = "../native_model_handoff.rs"]
+mod native_model_handoff;
+#[allow(dead_code)]
 #[path = "../native_gguf_ipc.rs"]
 mod native_gguf_ipc;
 
@@ -103,6 +106,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(LaunchError::ArtifactRejected)), "symlink executable accepted")?;
         fs::remove_file(&link)?;
         println!("Jend trusted launch dynamic ELF symlink and oversize refused: PASS");
+
+        // A signed static binary must not ask the loader for an executable
+        // stack or omit the explicit NX declaration. Signature alone cannot
+        // authorize executable data pages in this fixed profile.
+        let phoff = u64::from_le_bytes(bytes[32..40].try_into().unwrap()) as usize;
+        let phnum = u16::from_le_bytes(bytes[56..58].try_into().unwrap()) as usize;
+        let stack = (0..phnum).map(|i| phoff + i * 56).find(|&p|
+            u32::from_le_bytes(bytes[p..p + 4].try_into().unwrap()) == 0x6474e551)
+            .ok_or("compiled fixture has no GNU stack header")?;
+        let stack_path = fixture.with_extension("stack-profile");
+        for missing in [false, true] {
+            let mut bad_stack = bytes.clone();
+            if missing { bad_stack[stack..stack + 4].fill(0); }
+            else { bad_stack[stack + 4] |= 1; }
+            fs::write(&stack_path, &bad_stack)?;
+            let bad_release = sign(statement(&bad_stack))?;
+            let bad_head = AcceptedReleaseHead::genesis(&bad_release, &policy)?;
+            require(matches!(prepare_worker(&stack_path, &bad_release, &policy, bad_head),
+                Err(LaunchError::UnsupportedExecutable)), "signed unsafe stack ELF admitted")?;
+        }
+        fs::remove_file(&stack_path)?;
+        println!("Jend trusted launch executable or undeclared stack profile refused: PASS");
 
         let prepared = prepare_worker(&fixture, &release, &policy, head)?;
         // Prepare synthetic parent state deliberately. It MUST disappear before
