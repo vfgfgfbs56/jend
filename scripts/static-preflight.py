@@ -1916,7 +1916,7 @@ for check in [
     require(check in linux_probe, f"M8.5.15.6b actual Linux restriction missing: {check}")
 for check in [
     '"--sandbox-probe"', "jend_linux_probe::install_restrictions()",
-    "jend_linux_probe::verify_active_restrictions()",
+    "jend_linux_probe::verify_active_restrictions(argv[3], test_fd)",
     "defined(__linux__) && !defined(JEND_WITH_LLAMA)",
 ]:
     require(check in linux_entrypoint, f"M8.5.15.6b worker entrypoint missing: {check}")
@@ -1953,7 +1953,7 @@ for expected in [
     require(expected in linux_restricted_source, f"M8.5.15.6b.1 file-open/fork denial absent: {expected}")
 for expected in [
     '"--deny-read"', "access(argv[3], R_OK)", 
-    "verify_active_restrictions(argv[3])",
+    "verify_active_restrictions(argv[3], test_fd)",
 ]:
     require(expected in linux_restricted_worker, f"M8.5.15.6b.1 canary-bound test route missing: {expected}")
 for expected in [
@@ -1972,6 +1972,40 @@ require(
     and "Backend & Security Ready" in security_register
     and "JEND-SECURITY-REGISTER.md" in read("JEND-PROJECT-CONTEXT.md"),
     "Service-wide threat register and CI risk-update gate must remain mandatory",
+)
+
+# M8.5.15.6b.2: deliberately inherited synthetic canary must be
+# closed by kernel close_range before seccomp; environment scrub test-only.
+fd_worker = read("native/jend-gguf-worker/worker.cpp")
+fd_sandbox = read("native/jend-gguf-worker/linux_sandbox_probe.h")
+fd_smoke = read("scripts/dev-native-linux-seccomp-probe.py")
+fd_docs = read("docs/M8.5.15.6B2-INHERITED-FD-ENV-PROBE.md")
+for expected in [
+    "strip_inherited_launch_state",
+    "syscall(__NR_close_range, 3u, ~0u, 0u)",
+    "fcntl(canary_fd, F_GETFD)",
+    "clearenv()",
+    "std::getenv(\"JEND_TEST_INHERITED_ENV_CANARY\") == nullptr",
+    "closed_canary_fd",
+]:
+    require(expected in fd_sandbox, f"M8.5.15.6b.2 inherited state gate absent: {expected}")
+for expected in [
+    '"--inherited-fd"', "parse_expected_fd(argv[5], test_fd)",
+    "strip_inherited_launch_state(test_fd)",
+    "verify_active_restrictions(argv[3], test_fd)",
+]:
+    require(expected in fd_worker, f"M8.5.15.6b.2 worker handoff gate absent: {expected}")
+for expected in [
+    "pass_fds=(candidate_fd,)", 'env=clean_env',
+    "Jend Linux close_range removes inherited canary descriptor: PASS",
+    "Jend Linux clearenv drops synthetic inherited environment: PASS",
+    "Jend native absent inherited descriptor fail-closed: PASS",
+]:
+    require(expected in fd_smoke, f"M8.5.15.6b.2 honest smoke proof missing: {expected}")
+require(
+    "does not authorize" in fd_docs.lower()
+    and "JSEC-001" in read("JEND-SECURITY-REGISTER.md"),
+    "M8.5.15.6b.2 must never authorize real E2EE inference",
 )
 
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")
