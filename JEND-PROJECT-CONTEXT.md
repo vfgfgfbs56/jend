@@ -1,14 +1,14 @@
 # JEND — PROJECT CONTEXT & ROADMAP (памятка для нового чата)
 
-> **Обновлено:** 2026-10-14. **Текущий этап:** M8.5.15.6b.2 inherited FD / environment sanitation probe (в разработке); последний подтверждённый Mac-тест — M8.5.15.6b.1, 5 PASS (отказ Linux sandbox на Mac).  
-> **Основная ветка разработки:** `feat/m8.5.15.6b2-inherited-fd-env-isolation-probe`, [#18](https://github.com/vfgfgfbs56/jend/pull/18) поверх [#17](https://github.com/vfgfgfbs56/jend/pull/17).  
+> **Обновлено:** 2026-10-14. **Текущий этап:** M8.5.15.6c trusted pre-exec native launch (Linux model-free experiment; CI ещё не проверен); последний подтверждённый Mac-тест — M8.5.15.6b.1, 5 PASS (отказ Linux sandbox на Mac).
+> **Основная ветка разработки:** `feat/m8.5.15.6c-trusted-native-launch`; новый stacked PR поверх [#18](https://github.com/vfgfgfbs56/jend/pull/18), ещё не открыт.
 > **Статус:** прототипы проверки/хранения моделей и взаимодействия Rust/C++; **реальный безопасный инференс сторонней модели в Jend пока НЕ реализован**.  
 > **Важно:** этот файл — редактируемый снимок на момент коммита, не автоматически обновляемые сведения о GitHub. Перед новым действием перечитать его и **проверить актуальное состояние PR, веток и CI**.
 
 ## Как продолжать в новом чате (прочитать прежде, чем действовать)
 
 1. Открыть **именно этот файл из последней рабочей ветки**:
-   [JEND-PROJECT-CONTEXT.md — актуальная ветка](https://github.com/vfgfgfbs56/jend/blob/feat/m8.5.15.6b2-inherited-fd-env-isolation-probe/JEND-PROJECT-CONTEXT.md).
+   [JEND-PROJECT-CONTEXT.md — актуальная ветка](https://github.com/vfgfgfbs56/jend/blob/feat/m8.5.15.6c-trusted-native-launch/JEND-PROJECT-CONTEXT.md).
    После слияния прочитать версию на `main`:
    `https://github.com/vfgfgfbs56/jend/blob/main/JEND-PROJECT-CONTEXT.md`.
 2. Проверить [открытые PR](https://github.com/vfgfgfbs56/jend/pulls), их **базы**, последние SHA, CI и отсутствие конфликтов. Не предполагать, что все ранее открытые PR уже слиты.
@@ -58,6 +58,10 @@ OPTIONAL REMOTE: только отдельная явная сессия BYOK/п
 6. Реальная портируемость = собственные native адаптеры и профили безопасности по OS, не один desktop executable на iPhone/Android.
 
 ## 3. Подтверждено (никогда не повышать статус без доказательств)
+
+**M8.5.15.6c — текущая разработка:** [trusted launch design](docs/M8.5.15.6C-TRUSTED-NATIVE-LAUNCH.md). Локально собраны static C++ attacking constructor и protocol worker: negative control отказал до main; static IPC вернул NO_MODEL. Rust/полный launch **ещё не проверены**: локальный runtime без Rust, Landlock ENOSYS. Никакого пользовательского Mac PASS / реального inference не заявлено.
+
+**PR #18, актуальный SHA `a2409472ff8564d0eb83338f00cdd145ac1fb81b`:** проверено 2026-10-14 — все 8 checks PASS: [Rust](https://github.com/vfgfgfbs56/jend/actions/runs/38598965075), [desktop + mobile parser CI](https://github.com/vfgfgfbs56/jend/actions/runs/38598965204), [PostgreSQL](https://github.com/vfgfgfbs56/jend/actions/runs/38598964967). Это предыдущий worker-side scrub, а не ограничения до запуска C++. Все 17 milestone PR открыты; merge не выполнен.
 
 **Mac Apple Silicon — пользователь сообщил:**
 - M8.5.12: реальный HF/Xet singleton HTTP 206 + физическая→логическая реконструкция 1 МиБ и отсутствие непроверенных данных в WeightVM — **3 PASS**. Сетевой multipart и более одного signed entry — **NOT_EXERCISED**.
@@ -145,6 +149,7 @@ Jend GGUF snapshot grants no native execution capability: PASS
 ## 5. Очередь задач — последовательность и условия допуска
 
 ### СЕЙЧАС
+- [ ] M8.5.15.6c: signed accepted release + sealed static ELF + trusted pre-exec Landlock/seccomp, constructor attacks и bound/kill/reap — подтвердить Linux x64/ARM64 CI и Mac/Windows отказ. Реальный GGUF, production trust, отдельная OS identity и fuzz ещё BLOCKED.
 - [x] M8.5.15.3: signed whole GGUF + тест Mac 6 PASS.
 - [x] M8.5.15.4: private snapshot — CI PASS и Mac 6 PASS в составе общего теста.
 - [x] M8.5.15.5: Mac **10 PASS** (включая 4 дескрипторные проверки) и GitHub CI PASS.
@@ -167,7 +172,7 @@ Jend GGUF snapshot grants no native execution capability: PASS
 - **M8.5.15.6b — Linux restricted-process security probe (в работе):** Linux C++ prototype actually applies no-new-privs/seccomp for test-only command, denies AF_INET sockets and new child processes, caps CPU/RAM/fds/core. macOS and Windows MUST refuse rather than advertise a sandbox. Это только ограниченная syscall изоляция, доступ к файлам/E2EE НЕ изолирован.
 - **M8.5.15.6b.1 — ограниченный Linux file-open denial (в работе):** тестовый seccomp отвергает новые `open/openat/openat2`, некоторые операции изменения путей и fork; реальный `EPERM` нужен в CI. Унаследованные FD, E2EE и доступ к filesystem до установки фильтра остаются проблемой. Новые Critical/High риски фиксировать в `JEND-SECURITY-REGISTER.md`.
 - **M8.5.15.6b.2 — inherited test FD and environment scrub (в работе):** Linux test mode требует реально переданный безвредный FD, использует `close_range` и `clearenv` до seccomp, fail-closed без syscall/FD; Linux kernel security proof, Mac/Windows refusal. **Не является trusted launcher:** исполняемый файл может прочитать данные до очистки, stdio остаётся; секреты не передавать. JSEC-001 остаётся Critical.
-- **M8.5.15.6c — настоящий OS-sandboxed attested native worker (запланирован):** независимо подписанный исполняемый артефакт, OS-enforced sandbox без сети и доступа к E2EE, защищённая identity worker при исполнении, quotas RAM/CPU/fds/времени, kill descendants, fuzz IPC и GGUF pre-parser.
+- **M8.5.15.6c — trusted pre-exec launch (текущий Linux model-free этап):** существующий signed Jend release gate (builder + approver, exact accepted head/kind/host profile), immutable sealed executable memfd и FD exec; Rust устанавливает clean stdio/empty env, Landlock, default-deny seccomp и quotas до C++ constructor. Проверить реальный CI; [design / ограничения](docs/M8.5.15.6C-TRUSTED-NATIVE-LAUNCH.md). **Следующий gate:** независимые production root enrollment/revocation, отдельная OS identity и защита от same-UID debugger, sealed GGUF handoff, fuzz IPC/GGUF и native Apple/Windows/mobile adapters. Linux syscall proof не даёт права production inference.
 - **M8.5.15.7 — первый реальный GGUF CPU fixture:** законно полученная маленькая **сторонняя** модель, независимо опубликованный digest + проверенные лицензия и цепочка подписанного Jend release metadata; реальная локальная генерация, токены/s, first-token latency, peak RSS на ARM64 и x64, не использовать секреты.
 - **M8.5.16 — architecture v1 freeze + multi-model catalog:** утверждённый signed variant schema, versioned backend ABI, раздельные runtime adapters, 2+ существующие model families, multi-source WeightFabric/cache/mirror fallback (по лицензии), trust-root enrollment, rollback/revocation/update policy, ясный UI local/remote и требования ко всем целевым платформам. **Не заявлять поддержку формата без рабочего backend.**
 - **M8.6 — backend/security integration:** настоящий проверенный GGUF execution baseline, модельные lifecycle API, OS isolation, persisted release trust, multi-origin download quotas и отказоустойчивость, кроссплатформенные тесты. GPU/Metal/ONNX/мобильное расширение выполняются по приоритету, не должны искусственно блокировать базовый API-контракт.

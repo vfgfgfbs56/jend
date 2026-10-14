@@ -16,6 +16,7 @@ ALLOWED: dict[str, set[str]] = {
     "hkdf": {"0.13.0"},
     "hmac": {"0.12"},
     "lz4_flex": {"=0.13.1"},
+    "libc": {"=0.2.190"},
     "opaque-ke": {"4.0.1"},
     "rand": {"0.8.5"},
     "reqwest": {"0.12"},

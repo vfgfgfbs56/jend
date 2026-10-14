@@ -11,7 +11,9 @@ base64 = "0.22"
 jend-admission = { path = "../../crates/jend-admission" }
 jend-auth = { path = "../../crates/jend-auth" }
 jend-jreq = { path = "../../crates/jend-jreq" }
+jend-release = { path = "../../crates/jend-release" }
 jend-model-store = { path = "../../crates/jend-model-store" }
+libc = "=0.2.190"
 jend-sync = { path = "../../crates/jend-sync" }
 lz4_flex = { version = "=0.13.1", default-features = true }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }

@@ -2008,4 +2008,17 @@ require(
     "M8.5.15.6b.2 must never authorize real E2EE inference",
 )
 
+# M8.5.15.6c must stay disconnected from product inference until its remaining
+# release/identity/model/platform gates are independently reviewed.
+trusted_launch = read("client/jend-cli/src/native_worker_launch.rs")
+trusted_launch_docs = read("docs/M8.5.15.6C-TRUSTED-NATIVE-LAUNCH.md")
+trusted_launch_matrix = read(".github/workflows/native-ipc-portability.yml")
+require(
+    "mod native_worker_launch" not in read("client/jend-cli/src/main.rs")
+    and "Fixed model-free commands only" in trusted_launch
+    and "Production inference remains BLOCKED" in trusted_launch_docs
+    and "dev-native-trusted-launch-smoke.py" in trusted_launch_matrix,
+    "M8.5.15.6c must remain a CI-verified model-free trusted-launch experiment",
+)
+
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")
