@@ -1,7 +1,7 @@
 # JEND — PROJECT CONTEXT & ROADMAP (памятка для нового чата)
 
 > **Обновлено:** 2026-10-14. **Текущий этап:** M8.5.15.6b.2 inherited FD / environment sanitation probe (в разработке); последний подтверждённый Mac-тест — M8.5.15.6b.1, 5 PASS (отказ Linux sandbox на Mac).  
-> **Основная ветка разработки:** `feat/m8.5.15.6b2-inherited-fd-env-isolation-probe`, новый stacked PR поверх [#17](https://github.com/vfgfgfbs56/jend/pull/17).  
+> **Основная ветка разработки:** `feat/m8.5.15.6b2-inherited-fd-env-isolation-probe`, [#18](https://github.com/vfgfgfbs56/jend/pull/18) поверх [#17](https://github.com/vfgfgfbs56/jend/pull/17).  
 > **Статус:** прототипы проверки/хранения моделей и взаимодействия Rust/C++; **реальный безопасный инференс сторонней модели в Jend пока НЕ реализован**.  
 > **Важно:** этот файл — редактируемый снимок на момент коммита, не автоматически обновляемые сведения о GitHub. Перед новым действием перечитать его и **проверить актуальное состояние PR, веток и CI**.
 
@@ -69,6 +69,12 @@ OPTIONAL REMOTE: только отдельная явная сессия BYOK/п
 - M8.5.15.3: independently signed complete GGUF stream/hash inspection — **6 PASS**.
 - M8.5.15.4 + M8.5.15.5: пользователь выполнил общий smoke на Mac — **10 PASS**, включая независимую подпись и snapshot (6), открытый дескриптор и повторное хеширование (4). **Это тест синтетического GGUF и не реальный инференс.**
 
+**PR #18 / M8.5.15.6b.2** — GitHub CI **PASS**, Mac ещё НЕ тестировался:
+- [Rust workspace и Linux native seccomp smoke](https://github.com/vfgfgfbs56/jend/actions/runs/38598108598) — PASS.
+- [Native IPC portability](https://github.com/vfgfgfbs56/jend/actions/runs/38598108555) — все 6 jobs PASS: Linux x64/ARM64 реально подтвердили закрытие synthetic FD через `close_range`, очистку synthetic env, отказ fake FD; оба Mac и Windows отказали в Linux sandbox.
+- [PostgreSQL security](https://github.com/vfgfgfbs56/jend/actions/runs/38598108461) — PASS.
+- **JSEC-001 НЕ закрыт:** это эксперимент внутри запущенного бинарника, не безопасный trusted parent launcher и не OS enforcement на Mac/Windows.
+
 **PR #17 / M8.5.15.6b.1** — GitHub CI **PASS** и Mac **5 PASS** подтверждены пользователем:
 - Linux x64/ARM64 kernel-filter smoke реально подтвердил `EPERM` для новых файлов и fork; Windows/macOS отказали в неподдерживаемом Linux sandbox.
 - Пять Mac PASS: компиляция, unsupported sandbox refused, отсутствие canary denied, native model execution disabled, отсутствие полной E2EE isolation.
@@ -134,7 +140,7 @@ Jend GGUF snapshot grants no native execution capability: PASS
 | 14 | [#15](https://github.com/vfgfgfbs56/jend/pull/15) | M8.5.15.6a worker SHA-256, CI и Mac 6 PASS; NO production attestation / sandbox |
 | 15 | [#16](https://github.com/vfgfgfbs56/jend/pull/16) | M8.5.15.6b Linux-only seccomp/rlimit protocol probe; macOS/Windows reject; никакого реального GGUF запуска |
 | 16 | [#17](https://github.com/vfgfgfbs56/jend/pull/17) | M8.5.15.6b.1 deny new file opens / fork EPERM + Security Register, Mac 5 PASS; НЕ production sandbox |
-| 17 | PR #18 (создаётся) | M8.5.15.6b.2 закрытие унаследованных synthetic FDs и environment в Linux dev-only probe; НЕ production sandbox |
+| 17 | [#18](https://github.com/vfgfgfbs56/jend/pull/18) | M8.5.15.6b.2 закрытие унаследованных synthetic FDs и environment в Linux dev-only probe; НЕ production sandbox |
 
 ## 5. Очередь задач — последовательность и условия допуска
 
@@ -150,7 +156,8 @@ Jend GGUF snapshot grants no native execution capability: PASS
 - [x] M8.5.15.6b: Linux x64/ARM64 seccomp kernel probe и macOS/Windows fail-closed refusal в CI PASS.
 - [x] M8.5.15.6b: пользовательский Mac smoke **4 PASS** — компиляция, корректный отказ Linux sandbox на Mac, блокировка native inference, явное отсутствие FS/E2EE isolation.
 - [x] M8.5.15.6b.1: Linux x64/ARM64 CI EPERM на openat/fork PASS и Mac **5 PASS** подтверждены пользователем (Mac sandbox отсутствует).
-- [ ] M8.5.15.6b.2: очистка унаследованного тестового FD через `close_range` и тестового окружения через `clearenv` — Linux x64/ARM64 CI и Mac отказ в Linux-режиме ещё не подтверждены.
+- [x] M8.5.15.6b.2: Linux x64/ARM64 `close_range`, `clearenv`, fake-FD rejection, seccomp проверены GitHub CI PASS; desktop matrix и PostgreSQL PASS.
+- [ ] M8.5.15.6b.2: пользовательский Mac smoke — ещё не подтверждён; на Mac требуется fail-closed отказ в Linux sandbox, не поддержка sandbox.
 - [ ] Модель рисков [JEND-SECURITY-REGISTER.md](JEND-SECURITY-REGISTER.md): проверить все Critical/High до `Backend & Security Ready`; протоколы и CI PASS не доказывают отсутствие остальных уязвимостей.
 - [ ] Backend & Security Ready gate: завершить отдельно после Architecture v1 freeze, перед основным frontend; детали в §6.
 
