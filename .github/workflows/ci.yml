@@ -55,3 +55,5 @@ jobs:
         run: python3 scripts/dev-native-linux-seccomp-probe.py
       - name: Verify signed sealed executable and confinement before native constructor
         run: python3 scripts/dev-native-trusted-launch-smoke.py
+      - name: Verify signed immutable GGUF data handoff and forbid executable mappings
+        run: python3 scripts/dev-native-sealed-model-smoke.py

@@ -87,6 +87,30 @@ pub(crate) fn inspect_independently_signed_gguf_open_file(
     max_allowed_file_bytes: u64,
 ) -> Result<VerifiedGgufInspection> {
     trusted_key.verify(signed)?;
+    let meta = file.metadata()?;
+    if !meta.is_file() || meta.len() != signed.manifest.total_plaintext_len {
+        return Err(ModelStoreError::InvalidManifest);
+    }
+    let inspection = inspect_independently_signed_gguf_reader(
+        trusted_key, signed, file, max_allowed_file_bytes,
+    )?;
+    if file.metadata()?.len() != signed.manifest.total_plaintext_len {
+        return Err(ModelStoreError::ChunkLengthMismatch);
+    }
+    Ok(inspection)
+}
+
+/// Inspect exact bytes from a caller-owned reader without a pathname/native FD
+/// grant. This also verifies a final OS-sealed backing supplied by trusted Rust.
+/// Receipt proves signed header/chunk/whole bytes, NOT full GGUF validity,
+/// immutable ownership or authority to execute a model.
+pub fn inspect_independently_signed_gguf_reader<R: Read + Seek>(
+    trusted_key: &ModelReleasePublicKey,
+    signed: &SignedModelManifest,
+    file: &mut R,
+    max_allowed_file_bytes: u64,
+) -> Result<VerifiedGgufInspection> {
+    trusted_key.verify(signed)?;
     let m = &signed.manifest;
     if m.format != "gguf"
         || m.minimum_runtime == 0
@@ -97,10 +121,6 @@ pub(crate) fn inspect_independently_signed_gguf_open_file(
         || m.total_plaintext_len < GGUF_HEADER_BYTES as u64
         || m.total_plaintext_len > max_allowed_file_bytes
     {
-        return Err(ModelStoreError::InvalidManifest);
-    }
-    let meta = file.metadata()?;
-    if !meta.is_file() || meta.len() != m.total_plaintext_len {
         return Err(ModelStoreError::InvalidManifest);
     }
     file.seek(SeekFrom::Start(0))?;
@@ -150,9 +170,6 @@ pub(crate) fn inspect_independently_signed_gguf_open_file(
         return Err(ModelStoreError::ChunkLengthMismatch);
     }
     total.finish()?;
-    if file.metadata()?.len() != m.total_plaintext_len {
-        return Err(ModelStoreError::ChunkLengthMismatch);
-    }
 
     Ok(VerifiedGgufInspection {
         manifest_id: signed.manifest_id,
@@ -234,6 +251,27 @@ mod tests {
     }
     impl Drop for Fixture {
         fn drop(&mut self) { let _ = fs::remove_dir_all(&self.root); }
+    }
+
+    #[test]
+    fn reader_checks_full_length_and_signed_chunks_not_only_whole_digest() {
+        use std::io::Cursor;
+        let bytes = gguf();
+        let signer = ModelReleaseSigningKey::generate().unwrap();
+        let signed = signer.sign_manifest(manifest(&bytes)).unwrap();
+        let key = signer.public_key();
+        assert!(inspect_independently_signed_gguf_reader(&key, &signed,
+            &mut Cursor::new(bytes.clone()), 1024).is_ok());
+        let mut extra = bytes.clone(); extra.push(1);
+        assert!(inspect_independently_signed_gguf_reader(&key, &signed,
+            &mut Cursor::new(extra), 1024).is_err());
+        assert!(inspect_independently_signed_gguf_reader(&key, &signed,
+            &mut Cursor::new(&bytes[..bytes.len() - 1]), 1024).is_err());
+        let mut wrong_chunks = manifest(&bytes);
+        wrong_chunks.chunks[1].sha256[0] ^= 1;
+        let signed_wrong = signer.sign_manifest(wrong_chunks).unwrap();
+        assert!(inspect_independently_signed_gguf_reader(&key, &signed_wrong,
+            &mut Cursor::new(bytes), 1024).is_err());
     }
 
     #[test]

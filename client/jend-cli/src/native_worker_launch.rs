@@ -8,6 +8,7 @@
 //! established by TRUSTED Rust before any candidate instruction executes.
 
 use jend_release::{AcceptedReleaseHead, ArtifactKind, ReleaseBundle, ReleasePolicy};
+use crate::native_model_handoff::PreparedModel;
 use std::{path::Path, time::Duration};
 
 const MAX_EXECUTABLE: u64 = 16 * 1024 * 1024;
@@ -18,6 +19,7 @@ pub enum LaunchError {
     UnsupportedPlatform,
     ReleaseRejected,
     ArtifactRejected,
+    ModelRejected,
     UnsupportedExecutable,
     PrivilegedParent,
     SetupRefused,
@@ -35,6 +37,7 @@ impl std::fmt::Display for LaunchError {
             Self::UnsupportedPlatform => "native launch platform unsupported",
             Self::ReleaseRejected => "native release authority rejected",
             Self::ArtifactRejected => "native executable bytes rejected",
+            Self::ModelRejected => "native model data authority rejected",
             Self::UnsupportedExecutable => "native executable profile unsupported",
             Self::PrivilegedParent => "native launcher requires an unprivileged parent",
             Self::SetupRefused => "native launch confinement unavailable",
@@ -102,13 +105,24 @@ pub fn run_model_free_fixture(
 ) -> Result<Vec<u8>, LaunchError> {
     #[cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))]
     {
-        linux::run(worker, command, timeout)
+        linux::run(worker, command, None, timeout)
     }
     #[cfg(not(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64"))))]
     {
         let _ = (worker, command, timeout);
         Err(LaunchError::UnsupportedPlatform)
     }
+}
+
+/// Offline synthetic DATA handoff only; fixed command and one prepared FD.
+/// Never accepts an arbitrary FD, model path, user prompt or inference flag.
+pub fn run_sealed_model_fixture(
+    worker: &PreparedWorker, model: &PreparedModel, timeout: Duration,
+) -> Result<Vec<u8>, LaunchError> {
+    #[cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))]
+    { linux::run(worker, FixtureCommand::ConstructorProbe, Some(model), timeout) }
+    #[cfg(not(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64"))))]
+    { let _ = (worker, model, timeout); Err(LaunchError::UnsupportedPlatform) }
 }
 
 #[cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))]
@@ -184,8 +198,9 @@ mod linux {
         // No writable shared mapping exists. Both bytes AND execute bits are sealed.
         if unsafe { libc::fchmod(fd, 0o500) } != 0
             || unsafe { libc::fcntl(fd, libc::F_ADD_SEALS, SEALS) } != 0
-            || unsafe { libc::fcntl(fd, libc::F_GET_SEALS) } & SEALS != SEALS
         { return Err(LaunchError::SetupRefused); }
+        let actual = unsafe { libc::fcntl(fd, libc::F_GET_SEALS) };
+        if actual < 0 || actual & SEALS != SEALS { return Err(LaunchError::SetupRefused); }
         Ok(executable)
     }
 
@@ -243,19 +258,32 @@ mod linux {
         eq(p, nr as u32, 0, block.len() as u8);
         p.extend(block);
     }
-    fn prctl_getters(p: &mut Vec<libc::sock_filter>) {
-        let block = [
-            insn(BPF_LD_W_ABS, 0, 0, 20), // arg 0 high half
+    fn getters(p: &mut Vec<libc::sock_filter>, nr: libc::c_long, arg: u32, values: &[u32]) {
+        let mut block = vec![
+            insn(BPF_LD_W_ABS, 0, 0, 20 + arg * 8),
             insn(BPF_JEQ, 1, 0, 0), insn(BPF_RET, 0, 0, DENY),
-            insn(BPF_LD_W_ABS, 0, 0, 16),
-            insn(BPF_JEQ, 2, 0, libc::PR_GET_SECCOMP as u32),
-            insn(BPF_JEQ, 1, 0, libc::PR_GET_NO_NEW_PRIVS as u32),
-            insn(BPF_RET, 0, 0, DENY), insn(BPF_RET, 0, 0, ALLOW),
+            insn(BPF_LD_W_ABS, 0, 0, 16 + arg * 8),
         ];
-        eq(p, libc::SYS_prctl as u32, 0, block.len() as u8);
+        for (i, &value) in values.iter().enumerate() {
+            block.push(insn(BPF_JEQ, (values.len() - i) as u8, 0, value));
+        }
+        block.push(insn(BPF_RET, 0, 0, DENY));
+        block.push(insn(BPF_RET, 0, 0, ALLOW));
+        eq(p, nr as u32, 0, block.len() as u8);
         p.extend(block);
     }
-    fn filter() -> Vec<libc::sock_filter> {
+    fn no_exec_mapping(p: &mut Vec<libc::sock_filter>, nr: libc::c_long) {
+        let block = [
+            insn(BPF_LD_W_ABS, 0, 0, 36), // protection argument 2 high half
+            insn(BPF_JEQ, 1, 0, 0), insn(BPF_RET, 0, 0, DENY),
+            insn(BPF_LD_W_ABS, 0, 0, 32),
+            insn(0x45, 0, 1, libc::PROT_EXEC as u32), // BPF_JSET
+            insn(BPF_RET, 0, 0, DENY), insn(BPF_RET, 0, 0, ALLOW),
+        ];
+        eq(p, nr as u32, 0, block.len() as u8);
+        p.extend(block);
+    }
+    fn filter(with_model: bool) -> Vec<libc::sock_filter> {
         let arch = if cfg!(target_arch = "x86_64") { 0xc000003e } else { 0xc00000b7 };
         let mut p = vec![insn(BPF_LD_W_ABS, 0, 0, 4)];
         eq(&mut p, arch, 1, 0);
@@ -266,12 +294,17 @@ mod linux {
         // absolute pathname exec: execveat ignores dirfd for an absolute path!
         checked(&mut p, libc::SYS_execveat, &[(0, EXEC_FD as u64), (4, libc::AT_EMPTY_PATH as u64)]);
         checked(&mut p, libc::SYS_prlimit64, &[(0, 0), (2, 0)]); // self, read-only
-        prctl_getters(&mut p);
-        // fcntl GETFD permits testing closed inherited FDs but cannot allocate FDs.
-        checked(&mut p, libc::SYS_fcntl, &[(1, libc::F_GETFD as u64)]);
+        getters(&mut p, libc::SYS_prctl, 0,
+            &[libc::PR_GET_SECCOMP as u32, libc::PR_GET_NO_NEW_PRIVS as u32]);
+        // Read-only queries; no descriptor creation or flags/ownership updates.
+        getters(&mut p, libc::SYS_fcntl, 1,
+            &[libc::F_GETFD as u32, libc::F_GETFL as u32, libc::F_GET_SEALS as u32]);
+        no_exec_mapping(&mut p, libc::SYS_mmap);
+        no_exec_mapping(&mut p, libc::SYS_mprotect);
+        if with_model { checked(&mut p, libc::SYS_pread64, &[(0, 4)]); }
         for nr in [libc::SYS_read, libc::SYS_write, libc::SYS_writev, libc::SYS_close,
-            libc::SYS_fstat, libc::SYS_lseek, libc::SYS_brk, libc::SYS_mmap,
-            libc::SYS_munmap, libc::SYS_mprotect, libc::SYS_madvise, libc::SYS_mincore,
+            libc::SYS_fstat, libc::SYS_lseek, libc::SYS_brk,
+            libc::SYS_munmap, libc::SYS_madvise, libc::SYS_mincore,
             libc::SYS_rt_sigaction, libc::SYS_rt_sigprocmask, libc::SYS_rt_sigreturn,
             libc::SYS_sigaltstack, libc::SYS_futex, libc::SYS_set_tid_address,
             libc::SYS_set_robust_list, libc::SYS_rseq, libc::SYS_getrandom,
@@ -316,7 +349,7 @@ mod linux {
     /// Linux syscalls and stack values run before exec replaces parent memory.
     unsafe fn child_setup(
         parent: libc::pid_t, worker: RawFd, input: RawFd, output: RawFd,
-        null: RawFd, program: &libc::sock_fprog, argv: &[*const libc::c_char; 3],
+        null: RawFd, model: RawFd, program: &libc::sock_fprog, argv: &[*const libc::c_char; 3],
     ) -> ! {
         macro_rules! need { ($condition:expr) => { if !$condition { libc::_exit(125); } }; }
         need!(libc::setsid() >= 0);
@@ -330,6 +363,7 @@ mod linux {
         } else {
             need!(libc::fcntl(EXEC_FD, libc::F_SETFD, libc::FD_CLOEXEC) == 0);
         }
+        if model >= 0 { need!(libc::dup3(model, 4, 0) == 4); }
         // No cwd pointing into the vault; filesystem syscalls will be denied.
         need!(libc::chdir(c"/".as_ptr()) == 0);
         for (resource, value) in [(libc::RLIMIT_AS, RAM_BYTES), (libc::RLIMIT_CPU, 1),
@@ -351,8 +385,9 @@ mod linux {
         need!(libc::syscall(libc::SYS_landlock_restrict_self, rules_fd, 0) == 0);
         need!(libc::close(rules_fd as RawFd) == 0);
         // Unshare and close ALL other FDs, including non-CLOEXEC vault handles.
-        need!(libc::syscall(libc::SYS_close_range, 4u32, u32::MAX, 2u32) == 0);
-        let fd_limit = libc::rlimit { rlim_cur: 4, rlim_max: 4 };
+        let first_closed = if model >= 0 { 5u32 } else { 4u32 };
+        need!(libc::syscall(libc::SYS_close_range, first_closed, u32::MAX, 2u32) == 0);
+        let fd_limit = libc::rlimit { rlim_cur: first_closed as u64, rlim_max: first_closed as u64 };
         need!(libc::setrlimit(libc::RLIMIT_NOFILE, &fd_limit) == 0);
         need!(libc::prctl(libc::PR_SET_SECCOMP, 2, program as *const libc::sock_fprog, 0, 0) == 0);
         let envp: [*const libc::c_char; 1] = [std::ptr::null()];
@@ -384,21 +419,31 @@ mod linux {
         }
         Ok(unsafe { (File::from_raw_fd(fds[0]), File::from_raw_fd(fds[1])) })
     }
+    fn duplicate_for_remap(file: &File) -> Result<File, LaunchError> {
+        // Reserve sources above target 0/1/2/3/4 before fork, so installing
+        // exec FD 3 cannot destroy a model source originally at FD 3 or 4.
+        let fd = unsafe { libc::fcntl(file.as_raw_fd(), libc::F_DUPFD_CLOEXEC, 10) };
+        if fd < 10 { return Err(LaunchError::Io); }
+        Ok(unsafe { File::from_raw_fd(fd) })
+    }
 
     pub(super) fn run(
-        worker: &PreparedWorker, command: FixtureCommand, timeout: Duration,
+        worker: &PreparedWorker, command: FixtureCommand, model: Option<&PreparedModel>, timeout: Duration,
     ) -> Result<Vec<u8>, LaunchError> {
         if timeout < Duration::from_millis(50) || timeout > Duration::from_secs(5) {
             return Err(LaunchError::InvalidTimeout);
         }
         if !unprivileged() { return Err(LaunchError::PrivilegedParent); }
-        let option = match command {
+        let option = if model.is_some() { c"--model-handle-probe" } else { match command {
             FixtureCommand::ProtocolOnly => c"--protocol-smoke",
             FixtureCommand::ConstructorProbe => c"--constructor-probe",
             FixtureCommand::Stall => c"--stall",
             FixtureCommand::Flood => c"--flood",
             FixtureCommand::Cpu => c"--cpu",
-        };
+        }};
+        let executable_source = duplicate_for_remap(&worker.executable)?;
+        let model_source = model.map(|m| duplicate_for_remap(&m.file)).transpose()?;
+        let model_fd = model_source.as_ref().map_or(-1, |m| m.as_raw_fd());
         let argv = [c"jend-model-free-worker".as_ptr(), option.as_ptr(), std::ptr::null()];
         let (input, mut writer) = pipe()?;
         // Constant harmless fixture only; bounded write completes before fork.
@@ -414,7 +459,7 @@ mod linux {
         if unsafe { libc::fcntl(reader.as_raw_fd(), libc::F_SETFL, libc::O_NONBLOCK) } != 0 {
             return Err(LaunchError::Io);
         }
-        let instructions = filter();
+        let instructions = filter(model.is_some());
         let program = libc::sock_fprog { len: instructions.len() as u16,
             filter: instructions.as_ptr() as *mut libc::sock_filter };
         let parent = unsafe { libc::getpid() };
@@ -422,10 +467,10 @@ mod linux {
         // SAFETY: child uses only the audited syscall path above, never Rust IO.
         let pid = unsafe { libc::fork() };
         if pid < 0 { return Err(LaunchError::Io); }
-        if pid == 0 { unsafe { child_setup(parent, worker.executable.as_raw_fd(),
-            input.as_raw_fd(), output.as_raw_fd(), null.as_raw_fd(), &program, &argv) }; }
+        if pid == 0 { unsafe { child_setup(parent, executable_source.as_raw_fd(),
+            input.as_raw_fd(), output.as_raw_fd(), null.as_raw_fd(), model_fd, &program, &argv) }; }
         let mut child = ChildGuard { pid, reaped: false };
-        drop(input); drop(output); drop(null);
+        drop(input); drop(output); drop(null); drop(executable_source); drop(model_source);
         let mut bytes = Vec::new();
         let mut status = 0;
         let mut eof = false;

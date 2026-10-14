@@ -112,6 +112,7 @@ pub use runtime_feasibility::{
     estimate_local_feasibility,
 };
 
-pub use signed_gguf::{VerifiedGgufInspection, inspect_independently_signed_gguf};
+pub use signed_gguf::{VerifiedGgufInspection, inspect_independently_signed_gguf,
+    inspect_independently_signed_gguf_reader};
 
 pub use gguf_snapshot::{VerifiedGgufSnapshot, VerifiedGgufSnapshotStore, VerifiedGgufOpenLease};

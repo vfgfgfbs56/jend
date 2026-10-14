@@ -3,6 +3,9 @@
 #[path = "../native_worker_launch.rs"]
 mod native_worker_launch;
 #[allow(dead_code)]
+#[path = "../native_model_handoff.rs"]
+mod native_model_handoff;
+#[allow(dead_code)]
 #[path = "../native_gguf_ipc.rs"]
 mod native_gguf_ipc;
 

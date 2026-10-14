@@ -11,7 +11,7 @@
 
 use std::{
     fs::{self, File, OpenOptions},
-    io::{Read, Write},
+    io::{Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
 };
 #[cfg(unix)]
@@ -39,6 +39,32 @@ pub struct VerifiedGgufOpenLease {
 impl VerifiedGgufOpenLease {
     pub fn inspection(&self) -> VerifiedGgufInspection {
         self.inspection
+    }
+
+    /// Copy candidate bytes from the SAME held file into trusted staging.
+    /// No raw File/FD/path escapes this lease. Reverify first and bound copying;
+    /// a concurrent inode writer can still race the copy. Caller MUST seal and
+    /// independently verify the final destination before any native handoff.
+    /// The destination is NOT admitted by this method alone.
+    pub fn copy_candidate_to<W: Write>(
+        &mut self, key: &ModelReleasePublicKey, signed: &SignedModelManifest,
+        allowed_bytes: u64, output: &mut W,
+    ) -> Result<u64> {
+        self.reverify(key, signed, allowed_bytes)?;
+        self.file.seek(SeekFrom::Start(0))?;
+        let expected = self.inspection.byte_length;
+        let mut copied = 0u64;
+        let mut buffer = [0u8; BUFFER_SIZE];
+        loop {
+            let request = (expected + 1 - copied).min(BUFFER_SIZE as u64) as usize;
+            let count = self.file.read(&mut buffer[..request])?;
+            if count == 0 { break; }
+            copied += count as u64;
+            if copied > expected { return Err(ModelStoreError::ChunkLengthMismatch); }
+            output.write_all(&buffer[..count])?;
+        }
+        if copied != expected { return Err(ModelStoreError::ChunkLengthMismatch); }
+        Ok(copied)
     }
 
     /// Rehash the *same* open descriptor rather than reopening its pathname.
@@ -339,4 +365,58 @@ fn sync_dir(path: &Path) -> Result<()> {
     #[cfg(not(unix))]
     let _ = path;
     Ok(())
+}
+
+#[cfg(all(test, unix))]
+mod copy_race_tests {
+    use super::*;
+    use crate::{ModelChunk, ModelId, ModelManifest, ModelObjectId, ModelReleaseSigningKey};
+    use sha2::{Digest, Sha256};
+    use std::{io::Cursor, time::{SystemTime, UNIX_EPOCH}};
+
+    struct RaceWriter { inode: File, bytes: Vec<u8>, changed: bool }
+    impl Write for RaceWriter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.bytes.extend_from_slice(bytes);
+            if !self.changed {
+                // Deterministically change an unread byte AFTER initial rehash
+                // and AFTER first copy buffer, without changing length/inode.
+                self.inode.seek(SeekFrom::Start(BUFFER_SIZE as u64))?;
+                self.inode.write_all(&[0x99])?;
+                self.changed = true;
+            }
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+    }
+    #[test]
+    fn same_inode_mutation_during_copy_is_rejected_by_final_destination_verifier() {
+        let mut bytes = b"GGUF".to_vec();
+        bytes.extend(3u32.to_le_bytes()); bytes.extend(1u64.to_le_bytes()); bytes.extend(0u64.to_le_bytes());
+        bytes.resize(BUFFER_SIZE * 2, 0x55);
+        let signer = ModelReleaseSigningKey::generate().unwrap();
+        let manifest = ModelManifest { model_id: ModelId([0x6d; 16]), release_sequence: 1,
+            minimum_runtime: 1, format: "gguf".into(), architecture: "llama".into(), quantization: "F16".into(),
+            total_plaintext_len: bytes.len() as u64, whole_model_sha256: Sha256::digest(&bytes).into(),
+            chunks: bytes.chunks(BUFFER_SIZE).enumerate().map(|(i, b)| ModelChunk {
+                index: i as u32, object_id: ModelObjectId([i as u8 + 1; 32]),
+                offset: (i * BUFFER_SIZE) as u64, plaintext_len: b.len() as u32,
+                sha256: Sha256::digest(b).into(),
+            }).collect() };
+        let signed = signer.sign_manifest(manifest).unwrap();
+        let key = signer.public_key();
+        let nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let path = std::env::temp_dir().join(format!("jend-copy-race-{}-{nonce}", std::process::id()));
+        fs::write(&path, &bytes).unwrap();
+        let mut file = File::open(&path).unwrap();
+        let inspection = crate::signed_gguf::inspect_independently_signed_gguf_open_file(
+            &key, &signed, &mut file, bytes.len() as u64).unwrap();
+        let mut lease = VerifiedGgufOpenLease { file, inspection };
+        let mut writer = RaceWriter { inode: OpenOptions::new().write(true).open(&path).unwrap(),
+            bytes: Vec::new(), changed: false };
+        assert_eq!(lease.copy_candidate_to(&key, &signed, bytes.len() as u64, &mut writer).unwrap(), bytes.len() as u64);
+        assert!(crate::inspect_independently_signed_gguf_reader(&key, &signed,
+            &mut Cursor::new(writer.bytes), bytes.len() as u64).is_err());
+        fs::remove_file(path).unwrap();
+    }
 }
