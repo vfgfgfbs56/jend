@@ -48,14 +48,37 @@ def main() -> None:
         canary = Path(directory) / "jend-local-private-canary"
         canary.write_bytes(b"JEND-TEST-ONLY-CANARY-NOT-USER-SECRET")
         canary.chmod(0o600)
-        result = subprocess.run(
-            [str(worker), "--sandbox-probe", "--deny-read", str(canary)],
-            input=b"", capture_output=True, timeout=8,
-        )
         is_supported_linux = (
             platform.system() == "Linux"
             and platform.machine().lower() in ("x86_64", "aarch64", "arm64")
         )
+        # Never forward the caller's actual environment or secrets. We
+        # intentionally inherit only a harmless synthetic canary variable.
+        clean_env = {
+            "PATH": os.defpath,
+            "JEND_TEST_INHERITED_ENV_CANARY": "synthetic-not-a-secret",
+        }
+        if os.name == "nt" and "SystemRoot" in os.environ:
+            clean_env["SystemRoot"] = os.environ["SystemRoot"]
+        candidate_fd = -1
+        try:
+            if is_supported_linux:
+                candidate_fd = os.open(canary, os.O_RDONLY)
+                result = subprocess.run(
+                    [str(worker), "--sandbox-probe", "--deny-read", str(canary),
+                     "--inherited-fd", str(candidate_fd)],
+                    pass_fds=(candidate_fd,), env=clean_env,
+                    input=b"", capture_output=True, timeout=8,
+                )
+            else:
+                result = subprocess.run(
+                    [str(worker), "--sandbox-probe", "--deny-read", str(canary),
+                     "--inherited-fd", "3"],
+                    env=clean_env, input=b"", capture_output=True, timeout=8,
+                )
+        finally:
+            if candidate_fd >= 0:
+                os.close(candidate_fd)
         if is_supported_linux:
             if result.returncode != 0 or result.stdout != EXPECTED or result.stderr:
                 raise RuntimeError(
@@ -66,6 +89,8 @@ def main() -> None:
             print("Jend Linux finite CPU RAM open-files and core limits: PASS")
             print("Jend Linux kernel denies new readable-file handles: PASS")
             print("Jend Linux kernel denies child process creation: PASS")
+            print("Jend Linux close_range removes inherited canary descriptor: PASS")
+            print("Jend Linux clearenv drops synthetic inherited environment: PASS")
         else:
             if result.returncode == 0 or result.stdout != b"":
                 raise RuntimeError(
@@ -81,6 +106,16 @@ def main() -> None:
         )
         if missing.returncode == 0 or missing.stdout:
             raise RuntimeError("test-only restricted probe accepted missing canary")
+        if is_supported_linux:
+            # Claiming an FD that was never actually inherited MUST fail.
+            fake_fd = subprocess.run(
+                [str(worker), "--sandbox-probe", "--deny-read", str(canary),
+                 "--inherited-fd", "99999"],
+                env=clean_env, input=b"", capture_output=True, timeout=5,
+            )
+            if fake_fd.returncode == 0 or fake_fd.stdout:
+                raise RuntimeError("unverified inherited FD incorrectly accepted")
+        print("Jend native absent inherited descriptor fail-closed: PASS")
         print("Jend native missing security canary argument refused: PASS")
 
         # This probe is a separate development entrypoint. The normal native
