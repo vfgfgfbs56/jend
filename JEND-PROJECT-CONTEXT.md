@@ -1,7 +1,7 @@
 # JEND — PROJECT CONTEXT & ROADMAP (памятка для нового чата)
 
 > **Обновлено:** 2026-10-14. **Текущий этап:** M8.5.15.6d sealed GGUF DATA handoff (в разработке; CI не проверен; production BLOCKED); последний подтверждённый Mac-тест — M8.5.15.6c, 2 PASS (отказ неподдерживаемого trusted launch, no inference).
-> **Основная ветка разработки:** `feat/m8.5.15.6d-sealed-gguf-handoff`; новый stacked draft PR поверх [#19](https://github.com/vfgfgfbs56/jend/pull/19), ещё не открыт.
+> **Основная ветка разработки:** `feat/m8.5.15.6d-sealed-gguf-handoff`; draft [#20](https://github.com/vfgfgfbs56/jend/pull/20) поверх [#19](https://github.com/vfgfgfbs56/jend/pull/19).
 > **Статус:** прототипы проверки/хранения моделей и взаимодействия Rust/C++; **реальный безопасный инференс сторонней модели в Jend пока НЕ реализован**.  
 > **Важно:** этот файл — редактируемый снимок на момент коммита, не автоматически обновляемые сведения о GitHub. Перед новым действием перечитать его и **проверить актуальное состояние PR, веток и CI**.
 
@@ -63,7 +63,7 @@ OPTIONAL REMOTE: только отдельная явная сессия BYOK/п
 
 **PR #19 финальный head `c594803bfd542bbb66b58a86e336f128eb25f265`:** все 8 CI checks повторно проверены PASS: [Rust](https://github.com/vfgfgfbs56/jend/actions/runs/38605609540), [platform](https://github.com/vfgfgfbs56/jend/actions/runs/38605609537), [PostgreSQL](https://github.com/vfgfgfbs56/jend/actions/runs/38605609498). Draft, не слит.
 
-**Текущий M8.5.15.6d:** immutable NX/O_RDONLY GGUF data capability, final signed header/chunk/whole rehash, fixed FD 4 handoff, no executable mappings. Только synthetic data / no inference. Код и C++ compile готовы к CI; PASS запуска ещё не заявлен. [Design](docs/M8.5.15.6D-SEALED-GGUF-DATA-HANDOFF.md), [очередь security gates](docs/JEND-NATIVE-SECURITY-PLAN.md).
+**Текущий M8.5.15.6d:** immutable NX/O_RDONLY GGUF data capability, final signed header/chunk/whole rehash, fixed FD 4 handoff, no executable mappings. Только synthetic data / no inference. Первый код `f430c02f84a79da42af3b9f1108116c48e5c6512` проверен: [Rust + copy-race tests](https://github.com/vfgfgfbs56/jend/actions/runs/38611502423), [platform matrix](https://github.com/vfgfgfbs56/jend/actions/runs/38611502298), [PostgreSQL](https://github.com/vfgfgfbs56/jend/actions/runs/38611503316) — 8/8 checks PASS. Linux по 9 sealed-data PASS + прежние 10 launch PASS, Mac/Windows по 2 data refusal PASS. Дополнительное hardening: explicit NX GNU_STACK, personality reset и запрет READ_IMPLIES_EXEC, новые отрицательные тесты — текущий head ещё проверить. [Design](docs/M8.5.15.6D-SEALED-GGUF-DATA-HANDOFF.md), [очередь security gates](docs/JEND-NATIVE-SECURITY-PLAN.md).
 
 **M8.5.15.6c / PR #19 — подтверждённый CI baseline `ee6135b024e545ce03b915eebefd5a55cabf74a6`:** все 8 checks PASS: [Rust + workspace/security](https://github.com/vfgfgfbs56/jend/actions/runs/38604828773), [desktop matrix + mobile parser](https://github.com/vfgfgfbs56/jend/actions/runs/38604829162), [PostgreSQL](https://github.com/vfgfgfbs56/jend/actions/runs/38604829068). Linux x64/ARM64 — **10 trusted launch PASS**, 6 smoke unit tests: signed accepted head/profile, sealed FD exec, атаки в constructor до main, env/FD/parent mapping removal, RAM/CPU/time/output bounds и kill/reap. macOS Intel/Apple Silicon и Windows — **2 refusal PASS**, не sandbox этих OS. Усиления тестов ET_EXEC + PT_INTERP, portable synthetic canary, exact CPU kill и ECHILD handling также подтверждены на этом SHA. Последующий коммит обновляет только документы/manifest; исходники launcher совпадают с проверенным кодом. Перед новым действием проверить CI текущего head. [Design / blockers](docs/M8.5.15.6C-TRUSTED-NATIVE-LAUNCH.md). Пользовательский Mac 6c refusal 2 PASS теперь подтверждён; реального inference нет.
 
@@ -152,6 +152,7 @@ Jend GGUF snapshot grants no native execution capability: PASS
 | 16 | [#17](https://github.com/vfgfgfbs56/jend/pull/17) | M8.5.15.6b.1 deny new file opens / fork EPERM + Security Register, Mac 5 PASS; НЕ production sandbox |
 | 17 | [#18](https://github.com/vfgfgfbs56/jend/pull/18) | M8.5.15.6b.2 закрытие унаследованных synthetic FDs и environment в Linux dev-only probe; НЕ production sandbox |
 | 18 | [#19](https://github.com/vfgfgfbs56/jend/pull/19) | M8.5.15.6c trusted Rust до exec + signed sealed static binary; Linux 10 PASS, Mac/Windows refusal; draft, production BLOCKED |
+| 19 | [#20](https://github.com/vfgfgfbs56/jend/pull/20) | M8.5.15.6d sealed signed GGUF DATA FD 4, final hash/copy-race tests; draft, no inference |
 
 ## 5. Очередь задач — последовательность и условия допуска
 

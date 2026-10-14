@@ -72,6 +72,8 @@ __attribute__((constructor)) void attack_before_main() {
     need(environ && !environ[0]); // entire env empty, including loader variables
     need(prctl(PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0) == 1);
     need(prctl(PR_GET_SECCOMP, 0, 0, 0, 0) == 2);
+    need(syscall(SYS_personality, UINT64_C(0xffffffff)) == 0);
+    denied(syscall(SYS_personality, UINT64_C(0x00400000))); // READ_IMPLIES_EXEC
     for (int fd = 3; fd < 2048; ++fd) {
 #ifdef JEND_WITH_SEALED_MODEL_PROBE
         if (fd == 4) { need(fcntl(fd, F_GETFD) >= 0); continue; }

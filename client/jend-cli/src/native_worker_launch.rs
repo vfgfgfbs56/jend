@@ -1,7 +1,7 @@
 //! M8.5.15.6c: trusted, model-free Linux launch experiment.
 //!
-//! Not connected to the product, inference, Store or E2EE. Only the offline
-//! smoke binary imports this module. Release roots/head must be supplied by
+//! Not connected to product inference or E2EE. Offline smoke binaries import
+//! this module; only synthetic Store data is handed off. Roots/head are supplied by
 //! the trusted caller; candidate bytes cannot enroll their own signing key.
 //! The static executable is copied, sealed, reverified and executed by FD.
 //! Filesystem/exec confinement, syscall policy, clean stdio and quotas are
@@ -218,11 +218,16 @@ mod linux {
         if offset < 64 || end > b.len() { return Err(bad); }
         let entry = u64at(24);
         let mut executable_entry = false;
+        let mut non_executable_stack = false;
         for p in b[offset..end].chunks_exact(56) {
             let kind = u32::from_le_bytes(p[..4].try_into().unwrap());
             let flags = u32::from_le_bytes(p[4..8].try_into().unwrap());
             // PT_INTERP / PT_DYNAMIC are forbidden: no loader path or libraries.
             if kind == 2 || kind == 3 { return Err(bad); }
+            if kind == 0x6474e551 { // PT_GNU_STACK: require exactly one explicit NX stack
+                if non_executable_stack || flags & 1 != 0 { return Err(bad); }
+                non_executable_stack = true;
+            }
             if kind == 1 {
                 let get = |i| u64::from_le_bytes(p[i..i + 8].try_into().unwrap());
                 let (off, addr, file, mem) = (get(8), get(16), get(32), get(40));
@@ -233,7 +238,7 @@ mod linux {
                 executable_entry |= flags & 1 != 0 && entry >= addr && entry < addr + mem;
             }
         }
-        if !executable_entry { return Err(bad); }
+        if !executable_entry || !non_executable_stack { return Err(bad); }
         Ok(())
     }
 
@@ -294,6 +299,7 @@ mod linux {
         // absolute pathname exec: execveat ignores dirfd for an absolute path!
         checked(&mut p, libc::SYS_execveat, &[(0, EXEC_FD as u64), (4, libc::AT_EMPTY_PATH as u64)]);
         checked(&mut p, libc::SYS_prlimit64, &[(0, 0), (2, 0)]); // self, read-only
+        checked(&mut p, libc::SYS_personality, &[(0, 0xffffffff)]); // read-only query
         getters(&mut p, libc::SYS_prctl, 0,
             &[libc::PR_GET_SECCOMP as u32, libc::PR_GET_NO_NEW_PRIVS as u32]);
         // Read-only queries; no descriptor creation or flags/ownership updates.
@@ -366,6 +372,10 @@ mod linux {
         if model >= 0 { need!(libc::dup3(model, 4, 0) == 4); }
         // No cwd pointing into the vault; filesystem syscalls will be denied.
         need!(libc::chdir(c"/".as_ptr()) == 0);
+        // READ_IMPLIES_EXEC can silently promote PROT_READ to executable.
+        // Clear inherited personality BEFORE exec; NX GNU_STACK prevents
+        // the kernel loader from re-enabling it. Worker may only query it.
+        need!(libc::syscall(libc::SYS_personality, 0u64) >= 0);
         for (resource, value) in [(libc::RLIMIT_AS, RAM_BYTES), (libc::RLIMIT_CPU, 1),
             (libc::RLIMIT_CORE, 0), (libc::RLIMIT_FSIZE, 0),
             (libc::RLIMIT_STACK, 8 * 1024 * 1024), (libc::RLIMIT_MEMLOCK, 0),

@@ -3,8 +3,8 @@
 34f978dbfce9b7ec7a9b995038893d4dbe34ef9bec1e8b42af893f1bd2918718  .github/workflows/native-ipc-portability.yml
 e08ab01f51f5c118ac010bdcb8376981ebf86deaa497f2bf1c470a54595ff5eb  .gitignore
 ab1efd078780c850c4cfd1582f00ca7be58b879d07ba0d0edb5915c1a4b1c323  Cargo.toml
-277c54e783aac5ccacddd9a8fbba1e9d26cef8bbec0b90f765510fbde1784230  JEND-PROJECT-CONTEXT.md
-cb4f06559ed10bb44d3f09e068609f9ae0b479df82e3ae105c10b8151d1f8578  JEND-SECURITY-REGISTER.md
+52579988df6ab778285eb9a527b66d126335d45686837758576a7c2232952b65  JEND-PROJECT-CONTEXT.md
+6dcbc7ef199ce40f1090146d447ad0af5eb16f033f7e54689a1ac70466b2450d  JEND-SECURITY-REGISTER.md
 9c93ef996fa51130a85041eb9f11960f0fbf898665181447e2216621005b5525  README.md
 c94fa5434bdc1a0a69ce31e2dc8a402bb6f0c1788d6cf428edd91f4bee3663f5  SECURITY-ARCHITECTURE.md
 de846d70581faf46ace0b381d2ac1b858133201eec06c21e39e314498f809f64  client/jend-cli/Cargo.toml
@@ -16,7 +16,7 @@ eebd6972f36b823de8e3fcedcbdfb140afe56e1b7ea9c88004784b13bf63c494  client/jend-cl
 591cd8f6274c17dc7f5d5e73c735a175446b6fafcabbd541d2c2995ebf438418  client/jend-cli/src/bin/jend-hf-xet-single-range-live-smoke.rs
 4960944be4c3b46e99c71f0bf0366a0c75be10cff9b378ecdad8034c7b9c6856  client/jend-cli/src/bin/jend-native-gguf-ipc-smoke.rs
 5bd3836dc5ef8da3cdcae3bb734cd08cae0f0908d790a8f527447b7bf1456513  client/jend-cli/src/bin/jend-native-sealed-model-smoke.rs
-15522d3226c56b1365f623539c82553e971ad425e8abc037b487c76f114fdb39  client/jend-cli/src/bin/jend-native-trusted-launch-smoke.rs
+36f4b7190c1def55e5331f198f74fe1ef14471d4437f3434d1ec90a22d7c3935  client/jend-cli/src/bin/jend-native-trusted-launch-smoke.rs
 e677879d4da5a9801cc0fc3b6e8ec5dfccaf593471d026bff97d23b8a7aef861  client/jend-cli/src/bin/jend-native-worker-integrity-smoke.rs
 547f473cbd716001305f611d9eaec9fe116ea5c25d77bf3c7221f81ec6723855  client/jend-cli/src/bin/jend-source-worker-transport-policy-smoke.rs
 97de3406a36df22916179a4ea73271159b5f22d941cb50e7f2b792f0d26b4860  client/jend-cli/src/bin/jend-xet-fetch-schedule-smoke.rs
@@ -30,7 +30,7 @@ a466402853c55f2df1c09238c4656e24e29b5348dd23ade1efe7b4d76ee87d4f  client/jend-cl
 fd7181a30e6ab1b6db567db3fe655d45969b9b552232e75ca33d7695f22cd5e8  client/jend-cli/src/native_gguf_ipc.rs
 f30d9e3b2a070216b9777e874617545ad9015c931976b8f6f53614e1eee85ecc  client/jend-cli/src/native_model_handoff.rs
 ee3c2641183717b983bec02564d167c6f3527bd51b03704792d26f513eba7d74  client/jend-cli/src/native_worker_integrity.rs
-b158fda09aa3a9ffa1d51bd4c48095c0a600e22a21a0e7ba5c786c706ff8ffd4  client/jend-cli/src/native_worker_launch.rs
+c31d1feb74762cdc4ec1dfcac949fa59826bd15df2f11d477f7444031de521ee  client/jend-cli/src/native_worker_launch.rs
 2a82fe81c1ea421cc28f6ef139976ecacd5e8e9afd54bc35b93155ca6db2f81c  client/jend-cli/src/source_worker_transport.rs
 01e698a4853e3b3da28b1a4f426ed0b3ad68910eaee3bea83ddfe238aeb6a92d  client/jend-cli/src/verified_xet_page_bridge.rs
 95f914b36479de50ef9ed9b8fdd048ab036a55fa4aeed8247d3e6c88637f68f7  client/jend-cli/src/xet_fetch_schedule.rs
@@ -169,7 +169,7 @@ b0fefb5dcd58cc697255ff1ab48964d82462e6c7cd4d5db1661bd39b362bafde  deployment/pos
 1f9e9da9ed9864d3630b94fa9c4d1045e893644ab5f06b984c7f598cc85578e3  deployment/systemd/jend-vault.service
 8b7efa41901ae443e9a1ae93800aa069d760e1c24d70270681f9e2d08ba958e0  docs/ADR-0014-UNIVERSAL-MODEL-RUNTIME-AND-WEIGHTFABRIC.md
 96491217453cebb8e401920d575ba53bc24610c0bb452bde7c743635e873ccb1  docs/IMPLEMENTATION-STATUS.md
-ff056dcdb47d55c695c8029b982373820749673bab40c05733a52ceec861c635  docs/JEND-NATIVE-SECURITY-PLAN.md
+4337bfa7e7a313e8433745d6878c70464274b65f208b58b121a5fe140f15aac4  docs/JEND-NATIVE-SECURITY-PLAN.md
 6a79183b7e45d048ec7be8774ab5a5ef2a1004166f86d24b9dd0ec5521392c01  docs/JEND-V1.md
 80d43be17706f3ac858bbd390fd1d4a77e92ac90a991b465769cd3e984146411  docs/M1-VAULT.md
 c565c3c80de43b25bb9af87ad66f2505cd2a1a9fce5a411c83f74e6b8e700ed2  docs/M2-AUTH.md
@@ -247,7 +247,7 @@ e73fc924f3dc2bd6297fe1e708edb756b3c0621bade9272b55608a0da65a7888  docs/M8.5.15.1
 b8942a97c8ec5e4d1cc72212e49faecedef657e6cf726f6326f05a232c8c9b16  docs/M8.5.15.6B-LINUX-SECCOMP-PROBE.md
 81d0a0f425e07e1f81b45e5c5e8f6046898ea4562befa06319d9e1b1e2331bf1  docs/M8.5.15.6B2-INHERITED-FD-ENV-PROBE.md
 8ee3830ee62497e94d5588060aacd0b8229d0bf100324f5441e751328fd0b3c7  docs/M8.5.15.6C-TRUSTED-NATIVE-LAUNCH.md
-972d798ec85496b02bc8a92d831f47f7e4aa805bb0bb68d237c8734f8d0ea9fe  docs/M8.5.15.6D-SEALED-GGUF-DATA-HANDOFF.md
+f54e2060f9db29cb4a878297e0a51a33756b8eee9fd303d46391915c1fcf2ad0  docs/M8.5.15.6D-SEALED-GGUF-DATA-HANDOFF.md
 fbafe009c2702dc2fbbb2f6af2f5d7902fe644a671abb5f8a58e4510e6cdf6a1  docs/M8.5.2-XET-METADATA.md
 662881a33bc2fc9568b20cfb0abd47ddc9e1c26a780d1ecfd5fdfb7051827a2d  docs/M8.5.2.1-XET-METADATA-SMOKE-CLEANUP.md
 e580b675001d6b73ede7d3f99bbcf46ef4c367ce71cd945750162cee282b9a16  docs/M8.5.2.2-XET-SCHEMA-CORRECTION.md
@@ -271,7 +271,7 @@ ed9f2f9a9608ff938d1e6cf939ef3fedb96a05936f82aeb1b36c6ecb8dbc203b  docs/ROADMAP.m
 707d8d8b7ded966d04ccf77383139c3244b054a4f0e61baa9fc845cdb7f7015b  docs/legacy/003_model_store_legacy.sql.txt
 be722131bd3fbc5d05dc9a29207ea525ac821c80728f70ab913d6064a119361e  native/jend-gguf-worker/CMakeLists.txt
 01d0ac0425f71fa6a3d91f19b6331ab1d20039fc88cdc3fb0db764d1792b548e  native/jend-gguf-worker/linux_sandbox_probe.h
-5f44a8c6d442b3f82a9cec6c0a3e92c70189e43be022d9685c958646ed26f658  native/jend-gguf-worker/preexec_attack_fixture.cpp
+27b46704ad605d9e16fc4f96c7fcc9174b93205bf7ad21d336dc7a7677b2f00c  native/jend-gguf-worker/preexec_attack_fixture.cpp
 e7997cacecefceb4842bdc9171552513459401ca0622b34e619280d7c82c5385  native/jend-gguf-worker/worker.cpp
 da74f15d4ea22066934e0bfe22c80c56f370325f9cbec579de66f080046cca1c  rust-toolchain.toml
 a91a955fe388d0d086fbee34797966b72958c24e72bdd559ecc8b52a55e6121c  scripts/check-headless.sh
