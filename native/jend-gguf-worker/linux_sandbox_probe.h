@@ -10,6 +10,8 @@
 #endif
 
 #include <cerrno>
+#include <climits>
+#include <cstdlib>
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <cstddef>
@@ -44,6 +46,37 @@ inline bool clamp(int resource, rlim_t maximum) {
 inline void deny(std::vector<sock_filter>& filter, std::uint32_t syscall_number) {
     filter.push_back(BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, syscall_number, 0, 1));
     filter.push_back(BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ERRNO | EPERM));
+}
+
+// Deliberately requires a harmless inherited FD from our test parent:
+ // refusing an absent FD avoids a false PASS from a naturally clean spawn.
+inline bool parse_expected_fd(const char* encoded, int& fd) {
+    if (!encoded || !encoded[0] || encoded[0] == '-' || encoded[0] == '+')
+        return false;
+    errno = 0;
+    char* end = nullptr;
+    const unsigned long parsed = std::strtoul(encoded, &end, 10);
+    if (errno != 0 || !end || *end != '\0' || parsed < 3 || parsed > INT_MAX)
+        return false;
+    fd = static_cast<int>(parsed);
+    return true;
+}
+
+// Close every fd >= 3 using the kernel in ONE fail-closed operation. No
+// fallback to looping through getrlimit or /proc: such loops can miss FDs.
+// This only sanitizes THIS TEST PROCESS, not production worker launch.
+inline bool strip_inherited_launch_state(int canary_fd) {
+    if (canary_fd < 3 || fcntl(canary_fd, F_GETFD) == -1) return false;
+    if (std::getenv("JEND_TEST_INHERITED_ENV_CANARY") == nullptr) return false;
+#ifndef __NR_close_range
+    return false; // Unsupported kernel/syscall target; no silent downgrade.
+#else
+    if (syscall(__NR_close_range, 3u, ~0u, 0u) != 0) return false;
+#endif
+    errno = 0;
+    if (fcntl(canary_fd, F_GETFD) != -1 || errno != EBADF) return false;
+    if (::clearenv() != 0) return false;
+    return std::getenv("JEND_TEST_INHERITED_ENV_CANARY") == nullptr;
 }
 
 inline bool install_restrictions() {
@@ -149,7 +182,13 @@ inline bool install_restrictions() {
     return true;
 }
 
-inline bool verify_active_restrictions(const char* readable_canary_path) {
+inline bool verify_active_restrictions(const char* readable_canary_path, int closed_canary_fd) {
+    // The specific harmless descriptor must remain closed after all later
+    // library activity and kernel filter attachment.
+    errno = 0;
+    if (closed_canary_fd < 3 || fcntl(closed_canary_fd, F_GETFD) != -1
+        || errno != EBADF) return false;
+    if (std::getenv("JEND_TEST_INHERITED_ENV_CANARY") != nullptr) return false;
     if (!readable_canary_path || readable_canary_path[0] != '/') return false;
     if (prctl(PR_GET_NO_NEW_PRIVS, 0L, 0L, 0L, 0L) != 1
         || prctl(PR_GET_SECCOMP, 0L, 0L, 0L, 0L) != SECCOMP_MODE_FILTER) {

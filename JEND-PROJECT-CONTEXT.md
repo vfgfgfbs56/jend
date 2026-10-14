@@ -1,14 +1,14 @@
 # JEND — PROJECT CONTEXT & ROADMAP (памятка для нового чата)
 
-> **Обновлено:** 2026-10-14. **Текущий этап:** M8.5.15.6b.1 Linux denied-new-file-open proof + service-wide security risk ledger (в разработке); последний подтверждённый Mac-тест — M8.5.15.6b, 4 PASS (отказ в неподдерживаемом Linux sandbox).  
-> **Основная ветка разработки:** `feat/m8.5.15.6b1-file-open-denial-security-register`, [#17](https://github.com/vfgfgfbs56/jend/pull/17) поверх [#16](https://github.com/vfgfgfbs56/jend/pull/16).  
+> **Обновлено:** 2026-10-14. **Текущий этап:** M8.5.15.6b.2 inherited FD / environment sanitation probe (в разработке); последний подтверждённый Mac-тест — M8.5.15.6b.1, 5 PASS (отказ Linux sandbox на Mac).  
+> **Основная ветка разработки:** `feat/m8.5.15.6b2-inherited-fd-env-isolation-probe`, [#18](https://github.com/vfgfgfbs56/jend/pull/18) поверх [#17](https://github.com/vfgfgfbs56/jend/pull/17).  
 > **Статус:** прототипы проверки/хранения моделей и взаимодействия Rust/C++; **реальный безопасный инференс сторонней модели в Jend пока НЕ реализован**.  
 > **Важно:** этот файл — редактируемый снимок на момент коммита, не автоматически обновляемые сведения о GitHub. Перед новым действием перечитать его и **проверить актуальное состояние PR, веток и CI**.
 
 ## Как продолжать в новом чате (прочитать прежде, чем действовать)
 
 1. Открыть **именно этот файл из последней рабочей ветки**:
-   [JEND-PROJECT-CONTEXT.md — актуальная ветка](https://github.com/vfgfgfbs56/jend/blob/feat/m8.5.15.6b1-file-open-denial-security-register/JEND-PROJECT-CONTEXT.md).
+   [JEND-PROJECT-CONTEXT.md — актуальная ветка](https://github.com/vfgfgfbs56/jend/blob/feat/m8.5.15.6b2-inherited-fd-env-isolation-probe/JEND-PROJECT-CONTEXT.md).
    После слияния прочитать версию на `main`:
    `https://github.com/vfgfgfbs56/jend/blob/main/JEND-PROJECT-CONTEXT.md`.
 2. Проверить [открытые PR](https://github.com/vfgfgfbs56/jend/pulls), их **базы**, последние SHA, CI и отсутствие конфликтов. Не предполагать, что все ранее открытые PR уже слиты.
@@ -69,6 +69,17 @@ OPTIONAL REMOTE: только отдельная явная сессия BYOK/п
 - M8.5.15.3: independently signed complete GGUF stream/hash inspection — **6 PASS**.
 - M8.5.15.4 + M8.5.15.5: пользователь выполнил общий smoke на Mac — **10 PASS**, включая независимую подпись и snapshot (6), открытый дескриптор и повторное хеширование (4). **Это тест синтетического GGUF и не реальный инференс.**
 
+**PR #18 / M8.5.15.6b.2** — GitHub CI **PASS**, Mac ещё НЕ тестировался:
+- [Rust workspace и Linux native seccomp smoke](https://github.com/vfgfgfbs56/jend/actions/runs/38598108598) — PASS.
+- [Native IPC portability](https://github.com/vfgfgfbs56/jend/actions/runs/38598108555) — все 6 jobs PASS: Linux x64/ARM64 реально подтвердили закрытие synthetic FD через `close_range`, очистку synthetic env, отказ fake FD; оба Mac и Windows отказали в Linux sandbox.
+- [PostgreSQL security](https://github.com/vfgfgfbs56/jend/actions/runs/38598108461) — PASS.
+- **JSEC-001 НЕ закрыт:** это эксперимент внутри запущенного бинарника, не безопасный trusted parent launcher и не OS enforcement на Mac/Windows.
+
+**PR #17 / M8.5.15.6b.1** — GitHub CI **PASS** и Mac **5 PASS** подтверждены пользователем:
+- Linux x64/ARM64 kernel-filter smoke реально подтвердил `EPERM` для новых файлов и fork; Windows/macOS отказали в неподдерживаемом Linux sandbox.
+- Пять Mac PASS: компиляция, unsupported sandbox refused, отсутствие canary denied, native model execution disabled, отсутствие полной E2EE isolation.
+- [JEND-SECURITY-REGISTER.md](JEND-SECURITY-REGISTER.md) — риски Critical/High и требование NO-GO до backend security acceptance.
+
 **PR #16 / M8.5.15.6b** — GitHub CI **PASS**, Mac **4 PASS** подтверждены пользователем:
 - [Rust и Linux seccomp smoke](https://github.com/vfgfgfbs56/jend/actions/runs/38456389618) — PASS. На Ubuntu реально установлены seccomp/no-new-privs/rlimits и сетевой socket отказал с EPERM.
 - [Native IPC portability matrix](https://github.com/vfgfgfbs56/jend/actions/runs/38456389587) — все 6 jobs PASS: Linux x64/ARM64 kernel-probe, Windows и оба Mac корректно отклоняют неподдерживаемый Linux sandbox, iOS/Android только cross-compile протокола.
@@ -128,7 +139,8 @@ Jend GGUF snapshot grants no native execution capability: PASS
 | 13 | [#14](https://github.com/vfgfgfbs56/jend/pull/14) | M8.5.15.5 same-open-handle signed GGUF rehash, Mac 10 PASS; ещё не immutable OS backing |
 | 14 | [#15](https://github.com/vfgfgfbs56/jend/pull/15) | M8.5.15.6a worker SHA-256, CI и Mac 6 PASS; NO production attestation / sandbox |
 | 15 | [#16](https://github.com/vfgfgfbs56/jend/pull/16) | M8.5.15.6b Linux-only seccomp/rlimit protocol probe; macOS/Windows reject; никакого реального GGUF запуска |
-| 16 | [#17](https://github.com/vfgfgfbs56/jend/pull/17) | M8.5.15.6b.1 deny new file opens / fork EPERM + полный реестр рисков безопасности; НЕ production sandbox |
+| 16 | [#17](https://github.com/vfgfgfbs56/jend/pull/17) | M8.5.15.6b.1 deny new file opens / fork EPERM + Security Register, Mac 5 PASS; НЕ production sandbox |
+| 17 | [#18](https://github.com/vfgfgfbs56/jend/pull/18) | M8.5.15.6b.2 закрытие унаследованных synthetic FDs и environment в Linux dev-only probe; НЕ production sandbox |
 
 ## 5. Очередь задач — последовательность и условия допуска
 
@@ -143,7 +155,9 @@ Jend GGUF snapshot grants no native execution capability: PASS
 - [x] M8.5.15.6a: Mac **6 PASS** подтверждены пользователем; это не OS sandbox и не production exec.
 - [x] M8.5.15.6b: Linux x64/ARM64 seccomp kernel probe и macOS/Windows fail-closed refusal в CI PASS.
 - [x] M8.5.15.6b: пользовательский Mac smoke **4 PASS** — компиляция, корректный отказ Linux sandbox на Mac, блокировка native inference, явное отсутствие FS/E2EE isolation.
-- [ ] M8.5.15.6b.1: Linux seccomp запрет новых file open и fork — проверить реальный `EPERM` на тестовом локальном canary в Linux x64/ARM64 CI, отдельный Mac fail-closed smoke.
+- [x] M8.5.15.6b.1: Linux x64/ARM64 CI EPERM на openat/fork PASS и Mac **5 PASS** подтверждены пользователем (Mac sandbox отсутствует).
+- [x] M8.5.15.6b.2: Linux x64/ARM64 `close_range`, `clearenv`, fake-FD rejection, seccomp проверены GitHub CI PASS; desktop matrix и PostgreSQL PASS.
+- [ ] M8.5.15.6b.2: пользовательский Mac smoke — ещё не подтверждён; на Mac требуется fail-closed отказ в Linux sandbox, не поддержка sandbox.
 - [ ] Модель рисков [JEND-SECURITY-REGISTER.md](JEND-SECURITY-REGISTER.md): проверить все Critical/High до `Backend & Security Ready`; протоколы и CI PASS не доказывают отсутствие остальных уязвимостей.
 - [ ] Backend & Security Ready gate: завершить отдельно после Architecture v1 freeze, перед основным frontend; детали в §6.
 
@@ -152,6 +166,7 @@ Jend GGUF snapshot grants no native execution capability: PASS
 - **M8.5.15.6a — native executable integrity preflight (в работе):** bounded streaming SHA-256 native worker binary против *независимо закреплённой* ожидаемой суммы; offline synthetic/dev fixture only, **не** доверенная подпись дистрибутива и **не** race-free exec.
 - **M8.5.15.6b — Linux restricted-process security probe (в работе):** Linux C++ prototype actually applies no-new-privs/seccomp for test-only command, denies AF_INET sockets and new child processes, caps CPU/RAM/fds/core. macOS and Windows MUST refuse rather than advertise a sandbox. Это только ограниченная syscall изоляция, доступ к файлам/E2EE НЕ изолирован.
 - **M8.5.15.6b.1 — ограниченный Linux file-open denial (в работе):** тестовый seccomp отвергает новые `open/openat/openat2`, некоторые операции изменения путей и fork; реальный `EPERM` нужен в CI. Унаследованные FD, E2EE и доступ к filesystem до установки фильтра остаются проблемой. Новые Critical/High риски фиксировать в `JEND-SECURITY-REGISTER.md`.
+- **M8.5.15.6b.2 — inherited test FD and environment scrub (в работе):** Linux test mode требует реально переданный безвредный FD, использует `close_range` и `clearenv` до seccomp, fail-closed без syscall/FD; Linux kernel security proof, Mac/Windows refusal. **Не является trusted launcher:** исполняемый файл может прочитать данные до очистки, stdio остаётся; секреты не передавать. JSEC-001 остаётся Critical.
 - **M8.5.15.6c — настоящий OS-sandboxed attested native worker (запланирован):** независимо подписанный исполняемый артефакт, OS-enforced sandbox без сети и доступа к E2EE, защищённая identity worker при исполнении, quotas RAM/CPU/fds/времени, kill descendants, fuzz IPC и GGUF pre-parser.
 - **M8.5.15.7 — первый реальный GGUF CPU fixture:** законно полученная маленькая **сторонняя** модель, независимо опубликованный digest + проверенные лицензия и цепочка подписанного Jend release metadata; реальная локальная генерация, токены/s, first-token latency, peak RSS на ARM64 и x64, не использовать секреты.
 - **M8.5.16 — architecture v1 freeze + multi-model catalog:** утверждённый signed variant schema, versioned backend ABI, раздельные runtime adapters, 2+ существующие model families, multi-source WeightFabric/cache/mirror fallback (по лицензии), trust-root enrollment, rollback/revocation/update policy, ясный UI local/remote и требования ко всем целевым платформам. **Не заявлять поддержку формата без рабочего backend.**
@@ -191,7 +206,7 @@ Jend GGUF snapshot grants no native execution capability: PASS
 1. Обновляет дату и текущую рабочую ветку/PR; факты о CI только после проверки на GitHub.
 2. Переносит реальные завершённые пункты из **«План» в «Подтверждено»** с указанием платформы и типа проверки. Не ставит PASS без лога или сообщения пользователя.
 3. Добавляет/переупорядочивает следующий шаг, исправляет blockers, сроки/gates, ссылки на решения и PR chain.
-4. Обновляет `PROJECT-MANIFEST.sha256` после всех изменений.
+4. Обновляет `JEND-SECURITY-REGISTER.md` для security-sensitive изменений и `PROJECT-MANIFEST.sha256` после всех изменений.
 5. Проверяет `scripts/check-project-context-update.py`, `scripts/static-preflight.py`, `scripts/verify-manifest.py` и CI. **Любой security-sensitive PR обязан также обновить `JEND-SECURITY-REGISTER.md`; CI должен блокировать забытый review.** **Новый PR с исходниками/CI/docs без изменения этого файла должен блокироваться CI**. Если изменений только в памятке/манифесте, gate допускает.
 6. После слияния stacked веток обновляет ссылку на активную версию (`main` или верхний текущий PR), статус PR и порядок merge.
 

@@ -173,14 +173,19 @@ int main(int argc, char** argv) {
     // Test-only probe: seccomp rules apply to the current process BEFORE
     // any worker IPC. Never reuse this branch for real GGUF inference.
     // Unsupported platforms and builds fail closed with no success marker.
-    if (argc == 4 && std::strcmp(argv[1], "--sandbox-probe") == 0
-        && std::strcmp(argv[2], "--deny-read") == 0) {
+    if (argc == 6 && std::strcmp(argv[1], "--sandbox-probe") == 0
+        && std::strcmp(argv[2], "--deny-read") == 0
+        && std::strcmp(argv[4], "--inherited-fd") == 0) {
 #if defined(__linux__) && !defined(JEND_WITH_LLAMA)
-        // Only the test harness supplies an existing readable canary path;
-        // no file content is read, returned, executed or logged.
+        // Only synthetic test data; no real model, chat or private key.
         if (!argv[3] || argv[3][0] != '/' || access(argv[3], R_OK) != 0) return 3;
+        int test_fd = -1;
+        if (!jend_linux_probe::parse_expected_fd(argv[5], test_fd)) return 3;
+        // Must verify and CLOSE the actually inherited descriptor before
+        // attaching seccomp; remaining descriptors are exclusively stdio.
+        if (!jend_linux_probe::strip_inherited_launch_state(test_fd)) return 3;
         if (!jend_linux_probe::install_restrictions()) return 3;
-        if (!jend_linux_probe::verify_active_restrictions(argv[3])) return 3;
+        if (!jend_linux_probe::verify_active_restrictions(argv[3], test_fd)) return 3;
         std::cout << "JEND-LINUX-RESTRICTED-PROBE-V1\n";
         return std::cout.flush() ? 0 : 5;
 #else
