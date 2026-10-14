@@ -1924,7 +1924,7 @@ for check in [
     'platform.system() == "Linux"',
     "Jend Linux seccomp no-new-privs and network denial: PASS",
     "Jend unsupported desktop OS native sandbox refused: PASS",
-    "Jend native probe proves NO filesystem or E2EE isolation: PASS",
+    "Jend native restricted probe still exposes inherited descriptors and E2EE risk: PASS",
 ]:
     require(check in linux_test, f"M8.5.15.6b real-device security proof missing: {check}")
 require(
@@ -1932,6 +1932,46 @@ require(
     and "NO filesystem or E2EE isolation" in linux_docs
     and "M8.5.15.6b" in read("JEND-PROJECT-CONTEXT.md"),
     "M8.5.15.6b partial sandbox cannot be advertised as production isolation",
+)
+
+# M8.5.15.6b.1: kernel must actually deny new file opens and fork.
+# This is deliberately NOT a full E2EE/FS sandbox; inherited FD remain risk.
+linux_restricted_source = read("native/jend-gguf-worker/linux_sandbox_probe.h")
+linux_restricted_worker = read("native/jend-gguf-worker/worker.cpp")
+linux_restricted_test = read("scripts/dev-native-linux-seccomp-probe.py")
+security_register = read("JEND-SECURITY-REGISTER.md")
+security_update_guard = read("scripts/check-project-context-update.py")
+for expected in [
+    "deny(filter, __NR_openat)",
+    "deny(filter, __NR_openat2)",
+    "deny(filter, __NR_creat)",
+    "openat(AT_FDCWD, readable_canary_path",
+    "errno != EPERM",
+    "const pid_t child = fork()",
+    "PR_SET_SECCOMP",
+]:
+    require(expected in linux_restricted_source, f"M8.5.15.6b.1 file-open/fork denial absent: {expected}")
+for expected in [
+    '"--deny-read"', "access(argv[3], R_OK)", 
+    "verify_active_restrictions(argv[3])",
+]:
+    require(expected in linux_restricted_worker, f"M8.5.15.6b.1 canary-bound test route missing: {expected}")
+for expected in [
+    "Jend Linux kernel denies new readable-file handles: PASS",
+    "Jend Linux kernel denies child process creation: PASS",
+    "Jend native missing security canary argument refused: PASS",
+    "Jend native restricted probe still exposes inherited descriptors and E2EE risk: PASS",
+]:
+    require(expected in linux_restricted_test, f"M8.5.15.6b.1 negative regression test missing: {expected}")
+require(
+    "JEND-SECURITY-REGISTER.md" in security_update_guard
+    and "SECURITY_PATH_PREFIXES" in security_update_guard
+    and "NO-GO" in security_register
+    and "JSEC-001" in security_register
+    and "JSEC-013" in security_register
+    and "Backend & Security Ready" in security_register
+    and "JEND-SECURITY-REGISTER.md" in read("JEND-PROJECT-CONTEXT.md"),
+    "Service-wide threat register and CI risk-update gate must remain mandatory",
 )
 
 print(f"static preflight PASS: {len(migrations)} migrations, {len(routes)} routes, {len(created_tables)} tables")

@@ -10,6 +10,8 @@
 #endif
 
 #include <cerrno>
+#include <fcntl.h>
+#include <sys/wait.h>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -64,9 +66,49 @@ inline bool install_restrictions() {
     filter.push_back(BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS));
 #endif
 
-    // Network access from the worker is denied, but this does not prohibit
-    // every possible IPC/file read. Strong isolation requires namespaces,
-    // Linux Landlock, separate UID and vetted descriptor allowlists.
+    // Deny new file opens and common pathname mutation syscalls, even when
+    // the invoking user could normally read its own E2EE secret files.
+    // This is NOT an isolation of already-open/inherited file descriptors,
+    // mmap, ioctl, /proc metadata or alternate access paths. Production
+    // must independently close/broker all fds and use a complete OS sandbox.
+#ifdef __NR_open
+    deny(filter, __NR_open);
+#endif
+    deny(filter, __NR_openat);
+#ifdef __NR_openat2
+    deny(filter, __NR_openat2);
+#endif
+#ifdef __NR_creat
+    deny(filter, __NR_creat);
+#endif
+#ifdef __NR_unlink
+    deny(filter, __NR_unlink);
+#endif
+#ifdef __NR_unlinkat
+    deny(filter, __NR_unlinkat);
+#endif
+#ifdef __NR_rename
+    deny(filter, __NR_rename);
+#endif
+#ifdef __NR_renameat
+    deny(filter, __NR_renameat);
+#endif
+#ifdef __NR_renameat2
+    deny(filter, __NR_renameat2);
+#endif
+#ifdef __NR_linkat
+    deny(filter, __NR_linkat);
+#endif
+#ifdef __NR_symlinkat
+    deny(filter, __NR_symlinkat);
+#endif
+#ifdef __NR_mkdirat
+    deny(filter, __NR_mkdirat);
+#endif
+
+    // Network sockets and new process creation are also denied. A full
+    // allowlisted sandbox needs filesystem namespace, Landlock, separate
+    // unprivileged identity and vetted OS handles.
     deny(filter, __NR_socket);
     deny(filter, __NR_socketpair);
     deny(filter, __NR_connect);
@@ -107,7 +149,8 @@ inline bool install_restrictions() {
     return true;
 }
 
-inline bool verify_active_restrictions() {
+inline bool verify_active_restrictions(const char* readable_canary_path) {
+    if (!readable_canary_path || readable_canary_path[0] != '/') return false;
     if (prctl(PR_GET_NO_NEW_PRIVS, 0L, 0L, 0L, 0L) != 1
         || prctl(PR_GET_SECCOMP, 0L, 0L, 0L, 0L) != SECCOMP_MODE_FILTER) {
         return false;
@@ -123,6 +166,25 @@ inline bool verify_active_restrictions() {
     // where the seccomp policy wasn't actually installed by the kernel.
     if (network != -1) {
         close(network);
+        return false;
+    }
+    if (errno != EPERM) return false;
+    errno = 0;
+    const int opened = openat(AT_FDCWD, readable_canary_path, O_RDONLY | O_CLOEXEC);
+    if (opened >= 0) {
+        close(opened);
+        return false;
+    }
+    // A missing/unreadable canary could return ENOENT/EACCES. Requiring
+    // exactly EPERM proves denial is due to the installed kernel filter.
+    if (errno != EPERM) return false;
+
+    errno = 0;
+    const pid_t child = fork();
+    if (child == 0) _exit(3);
+    if (child > 0) {
+        int child_status = 0;
+        (void)waitpid(child, &child_status, 0);
         return false;
     }
     return errno == EPERM;
