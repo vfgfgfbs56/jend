@@ -124,8 +124,42 @@ pub fn inspect_independently_signed_gguf_reader<R: Read + Seek>(
         return Err(ModelStoreError::InvalidManifest);
     }
     file.seek(SeekFrom::Start(0))?;
+    // Receipt fields come from the SAME first bytes fed into signed hash
+    // verification. A second header read would allow a mutable/deceptive
+    // reader to present one header and a different signed byte stream.
     let mut header = [0u8; GGUF_HEADER_BYTES];
-    file.read_exact(&mut header)?;
+    let mut header_count = 0usize;
+    let mut total = WholeModelVerifier::new(m);
+    let mut buffer = [0u8; IO_BUFFER_BYTES];
+
+    for chunk in &m.chunks {
+        let mut remaining = chunk.plaintext_len as u64;
+        let mut verify_chunk = ChunkVerifier::new(chunk);
+        while remaining > 0 {
+            let requested = usize::try_from(remaining.min(IO_BUFFER_BYTES as u64))
+                .map_err(|_| ModelStoreError::Overflow)?;
+            let count = file.read(&mut buffer[..requested])?;
+            if count == 0 {
+                return Err(ModelStoreError::ChunkLengthMismatch);
+            }
+            let prefix = (GGUF_HEADER_BYTES - header_count).min(count);
+            header[header_count..header_count + prefix].copy_from_slice(&buffer[..prefix]);
+            header_count += prefix;
+            verify_chunk.update(&buffer[..count])?;
+            total.update(&buffer[..count])?;
+            remaining -= count as u64;
+        }
+        verify_chunk.finish()?;
+    }
+
+    // A valid signed length cannot hide appended bytes, including if a file
+    // grew after we inspected its metadata.
+    let mut extra = [0u8; 1];
+    if file.read(&mut extra)? != 0 {
+        return Err(ModelStoreError::ChunkLengthMismatch);
+    }
+    total.finish()?;
+    if header_count != GGUF_HEADER_BYTES { return Err(ModelStoreError::InvalidManifest); }
     if &header[0..4] != b"GGUF" {
         return Err(ModelStoreError::InvalidManifest);
     }
@@ -142,34 +176,7 @@ pub fn inspect_independently_signed_gguf_reader<R: Read + Seek>(
         return Err(ModelStoreError::InvalidManifest);
     }
 
-    file.seek(SeekFrom::Start(0))?;
-    let mut total = WholeModelVerifier::new(m);
-    let mut buffer = [0u8; IO_BUFFER_BYTES];
 
-    for chunk in &m.chunks {
-        let mut remaining = chunk.plaintext_len as u64;
-        let mut verify_chunk = ChunkVerifier::new(chunk);
-        while remaining > 0 {
-            let requested = usize::try_from(remaining.min(IO_BUFFER_BYTES as u64))
-                .map_err(|_| ModelStoreError::Overflow)?;
-            let count = file.read(&mut buffer[..requested])?;
-            if count == 0 {
-                return Err(ModelStoreError::ChunkLengthMismatch);
-            }
-            verify_chunk.update(&buffer[..count])?;
-            total.update(&buffer[..count])?;
-            remaining -= count as u64;
-        }
-        verify_chunk.finish()?;
-    }
-
-    // A valid signed length cannot hide appended bytes, including if a file
-    // grew after we inspected its metadata.
-    let mut extra = [0u8; 1];
-    if file.read(&mut extra)? != 0 {
-        return Err(ModelStoreError::ChunkLengthMismatch);
-    }
-    total.finish()?;
 
     Ok(VerifiedGgufInspection {
         manifest_id: signed.manifest_id,
@@ -251,6 +258,32 @@ mod tests {
     }
     impl Drop for Fixture {
         fn drop(&mut self) { let _ = fs::remove_dir_all(&self.root); }
+    }
+
+    #[test]
+    fn deceptive_reader_cannot_separate_receipt_header_from_signed_hash_stream() {
+        use std::io::{Cursor, Seek};
+        struct SwitchReader { good: Vec<u8>, signed: Vec<u8>, cursor: Cursor<Vec<u8>>, resets: usize }
+        impl Read for SwitchReader {
+            fn read(&mut self, b: &mut [u8]) -> std::io::Result<usize> { self.cursor.read(b) }
+        }
+        impl Seek for SwitchReader {
+            fn seek(&mut self, position: SeekFrom) -> std::io::Result<u64> {
+                if position == SeekFrom::Start(0) {
+                    self.resets += 1;
+                    self.cursor = Cursor::new(if self.resets == 1 { self.good.clone() } else { self.signed.clone() });
+                }
+                self.cursor.seek(position)
+            }
+        }
+        let good = gguf();
+        let mut bad = good.clone(); bad[0] ^= 1;
+        let signer = ModelReleaseSigningKey::generate().unwrap();
+        let signed = signer.sign_manifest(manifest(&bad)).unwrap();
+        // Former header-read/rewind/hash behavior would accept the valid fake
+        // header and later independently signed BAD magic as one receipt.
+        let mut reader = SwitchReader { good, signed: bad, cursor: Cursor::new(Vec::new()), resets: 0 };
+        assert!(inspect_independently_signed_gguf_reader(&signer.public_key(), &signed, &mut reader, 1024).is_err());
     }
 
     #[test]
