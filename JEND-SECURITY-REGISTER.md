@@ -1,6 +1,6 @@
 # JEND — Security Risk Register & Release Blockers
 
-> **Дата пересмотра:** 2026-10-14. **Ветка:** `feat/m8.5.15.6b1-file-open-denial-security-register`. **Стадия:** sandbox experiment, not a production security acceptance.  
+> **Дата пересмотра:** 2026-10-14. **Ветка:** `feat/m8.5.15.6b2-inherited-fd-env-isolation-probe`. **Стадия:** sandbox experiment, not a production security acceptance.  
 > **Контекст и планы:** [JEND-PROJECT-CONTEXT.md](JEND-PROJECT-CONTEXT.md).  
 > **Критическое правило:** отсутствие найденных багов **не доказывает отсутствие уязвимостей**. Каждое существенное изменение server/client/crypto/native/deployment требует повторного анализа угроз и негативных тестов. Никакой промо-формулировки «100% безопасно».
 
@@ -19,7 +19,7 @@
 
 | ID | Severity | Boundary / scenario | Status & evidence | Required before backend-ready |
 |---|---|---|---|---|
-| JSEC-001 | Critical | Утечка E2EE/plaintext через нативный worker: чтение файлов, сеть, унаследованные FD | **CONFIRMED GAP**: `--infer-dev` не имеет production sandbox; Linux `--sandbox-probe` экспериментальный. PR #17 проверяет запрет новых `openat`, но не унаследованных FD. | Отдельная ОС identity; проверенный список FD; файловая изоляция (Linux namespaces/Landlock/allowlist, Apple sandbox, Windows AppContainer), сеть off, соответствующие негативные тесты |
+| JSEC-001 | Critical | Утечка E2EE/plaintext через нативный worker: чтение файлов, сеть, унаследованные FD | **CONFIRMED PRODUCT GAP; MITIGATED IN PROBE ONLY**: `--infer-dev` без production sandbox. PR #17 запрещает новые `openat`; M8.5.15.6b.2 закрывает тестовый унаследованный canary FD через `close_range` и очищает переменную через `clearenv`, но только после запуска недоверенного исполняемого файла; никакого production FD broker ещё нет. | Отдельная ОС identity; проверенный список FD; файловая изоляция (Linux namespaces/Landlock/allowlist, Apple sandbox, Windows AppContainer), сеть off, соответствующие негативные тесты |
 | JSEC-002 | Critical | Подмена исполняемого worker между hash-check и `exec` | **CONFIRMED GAP**: M8.5.15.6a проверяет digest по пути, но не race-free OS attestation | Независимый подписанный worker release, immutable deployment/verified OS loader identity и revalidation/sandbox на final exec |
 | JSEC-003 | Critical | Подмена GGUF между проверкой и загрузкой C++ | **CONFIRMED GAP**: M8.5.15.5 фиксирует открытый дескриптор, но inode допускает запись | OS-enforced immutable/sealed artifact и точный same-byte handoff, проверка отказов при одновременной модификации |
 | JSEC-004 | High | Источник сам выбирает подписывающий ключ, rollback старого выпуска | **CONFIRMED DEPLOYMENT GAP**: offline тестовые ключи, ещё нет закреплённого production publisher/distributor root | Отдельная процедура trust-enrollment, rotation, revocation, rollback/freeze prevention и тесты |
@@ -35,8 +35,9 @@
 
 ## Security proof inventory
 
-- **Mac ARM64 user-confirmed:** M8.5.15.4–15.5 **10 PASS**, M8.5.15.6a **6 PASS**, M8.5.15.6b **4 PASS**. The last four confirm that an unsupported Linux sandbox is refused on Mac, **not** Mac OS process isolation.
-- **Linux CI baseline:** M8.5.15.6b actual x64+ARM64 seccomp/no-new-privs network-denial/rlimits pass. M8.5.15.6b.1 extends this to actual **new file-open EPERM and fork EPERM** test once CI confirmed. Until then mark pending.
+- **Mac ARM64 user-confirmed:** M8.5.15.4–15.5 **10 PASS**, M8.5.15.6a **6 PASS**, M8.5.15.6b **4 PASS**, M8.5.15.6b.1 **5 PASS**. The last four confirm that an unsupported Linux sandbox is refused on Mac, **not** Mac OS process isolation.
+- **Linux CI baseline:** M8.5.15.6b and M8.5.15.6b.1 actual x64+ARM64 seccomp/no-new-privs/rlimits, **new file-open EPERM and fork EPERM** PASS in PR #17 GitHub CI. M8.5.15.6b.2 deliberately inherited test FD + synthetic env scrub is **PENDING CI**. These are synthetic model-free smoke tests only.
+- **Linux M8.5.15.6b.2 security caveat:** `close_range` and `clearenv` run **inside** an already launched process, not before its loader or initialization. A malicious binary is free not to run them. Do not change JSEC-001 to CLOSED, and NEVER pass secrets to this test.
 - **Windows/macOS CI baseline:** protocol tests pass and Linux-only `--sandbox-probe` refuses. Production native isolation is still unproven.
 - **Android/iOS:** standalone Rust IPC parser cross-compiles; mobile native execution/isolation has **not** been tested.
 
