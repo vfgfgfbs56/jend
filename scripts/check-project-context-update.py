@@ -16,7 +16,13 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 DOC = ROOT / "JEND-PROJECT-CONTEXT.md"
+SECURITY = ROOT / "JEND-SECURITY-REGISTER.md"
 MANIFEST = ROOT / "PROJECT-MANIFEST.sha256"
+SECURITY_PATH_PREFIXES = (
+    "server/", "client/", "crates/", "native/", "deployment/",
+    "scripts/", ".github/workflows/",
+)
+SECURITY_ROOT_FILES = {"Cargo.toml", "rust-toolchain.toml"}
 
 REQUIRED_HEADINGS = (
     "## 1. Что мы строим",
@@ -29,13 +35,24 @@ REQUIRED_HEADINGS = (
 )
 
 def main() -> int:
-    if not DOC.is_file() or not MANIFEST.is_file():
+    if not DOC.is_file() or not SECURITY.is_file() or not MANIFEST.is_file():
         print("Jend context gate: root continuity file or integrity manifest missing", file=sys.stderr)
         return 1
     text = DOC.read_text(encoding="utf-8")
     missing = [title for title in REQUIRED_HEADINGS if title not in text]
     if missing or len(text) < 4000:
         print("Jend context gate: missing roadmap/architecture sections " + repr(missing), file=sys.stderr)
+        return 1
+
+    risks = SECURITY.read_text(encoding="utf-8")
+    risk_ids = {f"JSEC-{i:03d}" for i in range(1, 14)}
+    if (
+        len(risks) < 4000
+        or not all(risk in risks for risk in risk_ids)
+        or "Backend & Security Ready" not in risks
+        or "NO-GO" not in risks
+    ):
+        print("Jend security gate: missing risk ledger or release blockers", file=sys.stderr)
         return 1
 
     base = os.environ.get("JEND_PR_BASE_SHA", "")
@@ -70,7 +87,21 @@ def main() -> int:
     if DOC.name in changed and MANIFEST.name not in changed:
         print("Jend context gate: changed context without updating SHA256 manifest", file=sys.stderr)
         return 1
-    print("Jend root project context updated with substantive PR: PASS")
+    security_sensitive = {
+        path for path in changed
+        if path.startswith(SECURITY_PATH_PREFIXES) or path in SECURITY_ROOT_FILES
+    }
+    if security_sensitive and SECURITY.name not in changed:
+        print(
+            "Jend security gate: security-sensitive source/workflow changed "
+            "without updating JEND-SECURITY-REGISTER.md and assessing risk.",
+            file=sys.stderr,
+        )
+        return 1
+    if SECURITY.name in changed and MANIFEST.name not in changed:
+        print("Jend security gate: risk ledger changed without SHA256 manifest", file=sys.stderr)
+        return 1
+    print("Jend root project context and security risk register checked: PASS")
     return 0
 
 if __name__ == "__main__":
