@@ -354,58 +354,77 @@ mod linux {
     /// Child path has no allocator, locks, unwinding, Rust IO or dynamic errors.
     /// All objects and BPF instructions were prepared before fork; only raw
     /// Linux syscalls and stack values run before exec replaces parent memory.
+    ///
+    /// # Safety
+    /// Call only in the newly forked child. Descriptor sources must remain
+    /// open, with worker/model sources reserved above remap slots 0..=4.
+    /// The filter instructions and NUL-terminated argv strings must stay live
+    /// until exec or _exit; neither path returns or runs Rust destructors.
     unsafe fn child_setup(
         parent: libc::pid_t, worker: RawFd, input: RawFd, output: RawFd,
         null: RawFd, model: RawFd, program: &libc::sock_fprog, argv: &[*const libc::c_char; 3],
     ) -> ! {
-        macro_rules! need { ($condition:expr) => { if !$condition { libc::_exit(125); } }; }
-        need!(libc::setsid() >= 0);
-        need!(libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL, 0, 0, 0) == 0);
-        need!(libc::getppid() == parent); // close parent-death setup race
-        need!(libc::dup2(input, 0) == 0);
-        need!(libc::dup2(output, 1) == 1);
-        need!(libc::dup2(null, 2) == 2);
+        // SAFETY: _exit terminates only this child without unwinding. Every
+        // syscall result below is checked before continuing toward exec.
+        macro_rules! need { ($condition:expr) => { if !$condition { unsafe { libc::_exit(125); } } }; }
+        need!(unsafe { libc::setsid() } >= 0);
+        need!(unsafe { libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL, 0, 0, 0) } == 0);
+        need!(unsafe { libc::getppid() } == parent); // close parent-death setup race
+        // SAFETY: the caller owns these live source FDs in the forked child;
+        // worker/model sources cannot alias the remap destination slots.
+        need!(unsafe { libc::dup2(input, 0) } == 0);
+        need!(unsafe { libc::dup2(output, 1) } == 1);
+        need!(unsafe { libc::dup2(null, 2) } == 2);
         if worker != EXEC_FD {
-            need!(libc::dup3(worker, EXEC_FD, libc::O_CLOEXEC) == EXEC_FD);
+            need!(unsafe { libc::dup3(worker, EXEC_FD, libc::O_CLOEXEC) } == EXEC_FD);
         } else {
-            need!(libc::fcntl(EXEC_FD, libc::F_SETFD, libc::FD_CLOEXEC) == 0);
+            need!(unsafe { libc::fcntl(EXEC_FD, libc::F_SETFD, libc::FD_CLOEXEC) } == 0);
         }
-        if model >= 0 { need!(libc::dup3(model, 4, 0) == 4); }
+        if model >= 0 { need!(unsafe { libc::dup3(model, 4, 0) } == 4); }
         // No cwd pointing into the vault; filesystem syscalls will be denied.
-        need!(libc::chdir(c"/".as_ptr()) == 0);
+        // SAFETY: the static C literal is NUL terminated and lives through exec.
+        need!(unsafe { libc::chdir(c"/".as_ptr()) } == 0);
         // READ_IMPLIES_EXEC can silently promote PROT_READ to executable.
         // Clear inherited personality BEFORE exec; NX GNU_STACK prevents
         // the kernel loader from re-enabling it. Worker may only query it.
-        need!(libc::syscall(libc::SYS_personality, 0u64) >= 0);
+        need!(unsafe { libc::syscall(libc::SYS_personality, 0u64) } >= 0);
         for (resource, value) in [(libc::RLIMIT_AS, RAM_BYTES), (libc::RLIMIT_CPU, 1),
             (libc::RLIMIT_CORE, 0), (libc::RLIMIT_FSIZE, 0),
             (libc::RLIMIT_STACK, 8 * 1024 * 1024), (libc::RLIMIT_MEMLOCK, 0),
             (libc::RLIMIT_NPROC, 0)] {
             let limit = libc::rlimit { rlim_cur: value, rlim_max: value };
-            need!(libc::setrlimit(resource, &limit) == 0);
+            // SAFETY: limit is initialized and borrowed only for this syscall.
+            need!(unsafe { libc::setrlimit(resource, &limit) } == 0);
         }
-        need!(libc::prctl(libc::PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == 0);
-        need!(libc::prctl(libc::PR_SET_DUMPABLE, 0, 0, 0, 0) == 0);
+        need!(unsafe { libc::prctl(libc::PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) } == 0);
+        need!(unsafe { libc::prctl(libc::PR_SET_DUMPABLE, 0, 0, 0, 0) } == 0);
         // Empty filesystem allowlist, including EXECUTE, REFER and TRUNCATE.
         // Anonymous memfd is outside the path hierarchy; this is the sole exec.
-        need!(libc::syscall(libc::SYS_landlock_create_ruleset, 0, 0, 1) >= 3);
+        need!(unsafe { libc::syscall(libc::SYS_landlock_create_ruleset, 0, 0, 1) } >= 3);
         let rules = LandlockRuleset { handled_access_fs: (1 << 15) - 1 };
-        let rules_fd = libc::syscall(libc::SYS_landlock_create_ruleset,
-            &rules as *const LandlockRuleset, std::mem::size_of::<LandlockRuleset>(), 0);
+        // SAFETY: the repr(C) rules object is initialized, with exactly its own
+        // size, and remains live until the kernel finishes copying it.
+        let rules_fd = unsafe { libc::syscall(libc::SYS_landlock_create_ruleset,
+            &rules as *const LandlockRuleset, std::mem::size_of::<LandlockRuleset>(), 0) };
         need!(rules_fd >= 0);
-        need!(libc::syscall(libc::SYS_landlock_restrict_self, rules_fd, 0) == 0);
-        need!(libc::close(rules_fd as RawFd) == 0);
+        need!(unsafe { libc::syscall(libc::SYS_landlock_restrict_self, rules_fd, 0) } == 0);
+        need!(unsafe { libc::close(rules_fd as RawFd) } == 0);
         // Unshare and close ALL other FDs, including non-CLOEXEC vault handles.
         let first_closed = if model >= 0 { 5u32 } else { 4u32 };
-        need!(libc::syscall(libc::SYS_close_range, first_closed, u32::MAX, 2u32) == 0);
+        need!(unsafe { libc::syscall(libc::SYS_close_range, first_closed, u32::MAX, 2u32) } == 0);
         let fd_limit = libc::rlimit { rlim_cur: first_closed as u64, rlim_max: first_closed as u64 };
-        need!(libc::setrlimit(libc::RLIMIT_NOFILE, &fd_limit) == 0);
-        need!(libc::prctl(libc::PR_SET_SECCOMP, 2, program as *const libc::sock_fprog, 0, 0) == 0);
+        // SAFETY: fd_limit is live and program/filter refer to the initialized
+        // pre-fork BPF objects retained by the caller until this nonreturning path.
+        need!(unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &fd_limit) } == 0);
+        need!(unsafe { libc::prctl(libc::PR_SET_SECCOMP, 2, program as *const libc::sock_fprog, 0, 0) } == 0);
         let envp: [*const libc::c_char; 1] = [std::ptr::null()];
         // Kernel drops all former mappings. FD 3 closes during successful exec.
-        libc::syscall(libc::SYS_execveat, EXEC_FD, c"".as_ptr(), argv.as_ptr(),
-            envp.as_ptr(), libc::AT_EMPTY_PATH);
-        libc::_exit(125); // no path-based exec or unsandboxed fallback
+        // SAFETY: EXEC_FD is the installed executable, argv is live per the
+        // caller contract, and both pointer arrays end in NULL. The empty
+        // pathname is static; failure can only terminate the child.
+        unsafe { libc::syscall(libc::SYS_execveat, EXEC_FD, c"".as_ptr(), argv.as_ptr(),
+            envp.as_ptr(), libc::AT_EMPTY_PATH); }
+        unsafe { libc::_exit(125); } // no path-based exec or unsandboxed fallback
     }
 
     struct ChildGuard { pid: libc::pid_t, reaped: bool }
