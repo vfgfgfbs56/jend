@@ -13,11 +13,9 @@ use jend_release::{
     AcceptedReleaseHead, ApproverSigningKey, ArtifactKind, BuilderSigningKey,
     ReleaseBundle, ReleasePolicy, ReleaseStatement, ReleaseStatementId,
 };
-use native_worker_launch::{
-    fixture_target, prepare_worker, run_model_free_fixture, FixtureCommand, LaunchError,
-};
+use native_worker_launch::{fixture_target, prepare_worker, LaunchError};
 use sha2::{Digest, Sha256};
-use std::{env, fs, path::PathBuf, time::Duration};
+use std::path::PathBuf;
 
 fn require(condition: bool, error: &'static str) -> Result<(), Box<dyn std::error::Error>> {
     if !condition { return Err(error.into()); }
@@ -25,7 +23,6 @@ fn require(condition: bool, error: &'static str) -> Result<(), Box<dyn std::erro
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<_> = env::args_os().skip(1).collect();
     let builders = [BuilderSigningKey::generate()?, BuilderSigningKey::generate()?];
     let approvers = [ApproverSigningKey::generate()?, ApproverSigningKey::generate()?];
     let policy = ReleasePolicy::new(builders.iter().map(|b| b.public_key()), 2,
@@ -56,7 +53,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))]
     {
-        use std::os::fd::AsRawFd;
+        use native_worker_launch::{run_model_free_fixture, FixtureCommand};
+        use std::{env, fs, os::fd::AsRawFd, time::Duration};
+        let args: Vec<_> = env::args_os().skip(1).collect();
         require(args.len() == 4, "expected fixture, static protocol, dynamic and canary paths")?;
         let fixture = PathBuf::from(&args[0]);
         let protocol = PathBuf::from(&args[1]);

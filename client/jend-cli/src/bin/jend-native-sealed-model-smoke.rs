@@ -7,13 +7,11 @@ mod native_worker_launch;
 mod native_model_handoff;
 
 use jend_model_store::{ModelChunk, ModelId, ModelManifest, ModelObjectId,
-    ModelReleaseSigningKey, VerifiedGgufSnapshotStore, ManifestId};
-use jend_release::{AcceptedReleaseHead, ApproverSigningKey, ArtifactKind, BuilderSigningKey,
-    ReleaseBundle, ReleasePolicy, ReleaseStatement, ReleaseStatementId};
+    ModelReleaseSigningKey, VerifiedGgufSnapshotStore};
 use native_model_handoff::prepare_sealed_model;
-use native_worker_launch::{fixture_target, prepare_worker, run_sealed_model_fixture, LaunchError};
+use native_worker_launch::LaunchError;
 use sha2::{Digest, Sha256};
-use std::{env, fs, path::PathBuf, time::{Duration, SystemTime, UNIX_EPOCH}};
+use std::{env, fs, path::PathBuf, time::{SystemTime, UNIX_EPOCH}};
 
 fn require(ok: bool, message: &'static str) -> Result<(), Box<dyn std::error::Error>> {
     if !ok { return Err(message.into()); }
@@ -75,11 +73,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(LaunchError::UnsupportedPlatform)), "unsupported host admitted native model handoff")?;
         println!("Jend sealed GGUF handoff unsupported host refused: PASS");
         println!("Jend sealed GGUF handoff still grants no inference: PASS");
+        drop(snapshot);
         return Ok(());
     }
     #[cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))]
     {
-        use std::os::{fd::AsRawFd, unix::fs::PermissionsExt};
+        use jend_model_store::ManifestId;
+        use jend_release::{AcceptedReleaseHead, ApproverSigningKey, ArtifactKind, BuilderSigningKey,
+            ReleaseBundle, ReleasePolicy, ReleaseStatement, ReleaseStatementId};
+        use native_worker_launch::{fixture_target, prepare_worker, run_sealed_model_fixture};
+        use std::{os::{fd::AsRawFd, unix::fs::PermissionsExt}, time::Duration};
         let executable = PathBuf::from(env::args_os().nth(1).ok_or("expected local signed fixture path")?);
         let builder = BuilderSigningKey::generate()?;
         let approver = ApproverSigningKey::generate()?;

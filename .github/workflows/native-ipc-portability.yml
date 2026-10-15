@@ -34,6 +34,11 @@ jobs:
         run: python scripts/dev-native-linux-seccomp-probe.py
       - name: Generate lockfile for signed trusted-launch fixture
         run: cargo generate-lockfile
+      - name: Reject unused imports variables and implicit unsafe operations in launch smoke binaries
+        shell: bash
+        run: |
+          cargo rustc -p jend-cli --bin jend-native-trusted-launch-smoke --locked -- -D unused-imports -D unused-variables -D unsafe-op-in-unsafe-fn
+          cargo rustc -p jend-cli --bin jend-native-sealed-model-smoke --locked -- -D unused-imports -D unused-variables -D unsafe-op-in-unsafe-fn
       - name: Verify trusted Rust launch before hostile native constructor
         run: python scripts/dev-native-trusted-launch-smoke.py
       - name: Verify sealed GGUF data capability or reject unsupported host
