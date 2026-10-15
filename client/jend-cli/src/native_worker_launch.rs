@@ -7,7 +7,7 @@
 //! Filesystem/exec confinement, syscall policy, clean stdio and quotas are
 //! established by TRUSTED Rust before any candidate instruction executes.
 
-use jend_release::{AcceptedReleaseHead, ArtifactKind, ReleaseBundle, ReleasePolicy};
+use jend_release::{AcceptedReleaseHead, ReleaseBundle, ReleasePolicy};
 use crate::native_model_handoff::PreparedModel;
 use std::{path::Path, time::Duration};
 
@@ -128,6 +128,7 @@ pub fn run_sealed_model_fixture(
 #[cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))]
 mod linux {
     use super::*;
+    use jend_release::ArtifactKind;
     use std::{
         fs::{File, OpenOptions},
         io::{Read, Seek, SeekFrom, Write},

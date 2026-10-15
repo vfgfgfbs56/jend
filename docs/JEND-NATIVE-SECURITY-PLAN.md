@@ -1,4 +1,4 @@
-# Native runtime security plan — 2026-10-14
+# Native runtime security plan — 2026-10-15
 
 This is a dependency plan, not a release date or production authorization.
 Universal Jend runtime still targets Linux, Windows, macOS, Android and iOS
@@ -9,6 +9,7 @@ fallback, model-provided signing roots, arbitrary code or private-key access.
 |---|---|---|
 | M8.5.15.6c | Signed static worker, sealed FD exec; trusted OS controls before constructor; clean launch; kernel quotas / kill / reap | PR #19 all 8 CI checks PASS; user Mac 2 refusal PASS. Linux-only model-free profile; production trust / separate identity still open |
 | M8.5.15.6d | Signed GGUF byte copy sealed against writes/resize/execute mode; final chunk/whole rehash; sole O_RDONLY data FD; no executable mappings | PR #20 final source f8dd341: 8/8 checks PASS, Linux 9 data + 11 launch PASS, copy-race/reader tests, NX stack/personality checks; other hosts refuse. Production gate stays CLOSED |
+| M8.5.15.6d.1 | Scope Linux-only smoke imports/argv correctly; reject unused imports/variables for both binaries on all five desktop runners | User Mac 6d: exactly 2 refusal/no-inference PASS on 2026-10-15; warning correction CI pending. No new execution capability |
 | M8.5.15.6e | Full bounded GGUF structural pre-parser and versioned IPC/FD contract | Validate metadata, tensor types/dimensions/offsets/alignment, overlapping/truncated regions and resource arithmetic; fuzz malformed files/IPC, ASan/UBSan native boundaries; header/hash PASS is insufficient |
 | Trust + compartments | Independently enroll distribution/model keys, persisted accepted releases, rotation/revocation/rollback; separate confidential service/OS identity | Audit source/worker permissions, same-UID debugger access, secret/log data flows, process lifetime handles; platform adapters need their own security profiles and device tests |
 | M8.5.15.7 | First small licensed third-party CPU model using verified same-byte FD reader and signed backend | Published independent identity/license and distributor chain; real tokens, cancel, wall/CPU/RAM budgets, latency/RSS on ARM64 and x64; no private content until all mandatory trust/isolation gates pass |
